@@ -114,16 +114,16 @@ static TCGv gpr_src(DisasContext *ctx, int reg_num)
 
 static TCGv gpr_dst(DisasContext *ctx, int reg_num)
 {
-    if (reg_num == 0) {
+    if (reg_num == 0 && (ctx->base.tb->flags & HW_FLAGS_RS_T) == 0) {
         return tcg_temp_new();
     }
 
     return cpu_gpr[reg_num];
 }
 
-static void gen_set_gpr(int reg_num, TCGv t)
+static void gen_set_gpr(DisasContext *ctx, int reg_num, TCGv t)
 {
-    if (reg_num != 0) {
+    if (reg_num != 0 || (ctx->base.tb->flags & HW_FLAGS_RS_T) != 0) {
         tcg_gen_mov_tl(cpu_gpr[reg_num], t);
     }
 }
@@ -243,7 +243,7 @@ static bool gen_rri(DisasContext *ctx, arg_i *a, void (*func)(TCGv, TCGv, TCGv))
     TCGv src2 = tcg_constant_tl(a->imm);
 
     func(dest, src1, src2);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
 
     return true;
 }
@@ -269,7 +269,7 @@ static bool gen_loadi(DisasContext *ctx, arg_i *a, MemOp mop)
     addr = make_address_i(ctx, addr, a->imm);
 
     tcg_gen_qemu_ld_tl(dest, addr, ctx->mem_idx, mop);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
 
     return true;
 }
@@ -324,7 +324,7 @@ static bool trans_jalr(DisasContext *ctx, arg_jalr *a)
     TCGv addr = make_address_i(ctx, src1, a->imm);
     tcg_gen_mov_tl(cpu_pc, addr);
     tcg_gen_movi_tl(dest, ctx->base.pc_next + 4);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
     tcg_gen_lookup_and_goto_ptr();
     ctx->base.is_jmp = DISAS_NORETURN;
     return true;
@@ -335,7 +335,7 @@ static bool trans_adr(DisasContext *ctx, arg_adr *a)
     TCGv dest = gpr_dst(ctx, a->ra);
 
     tcg_gen_movi_tl(dest, ctx->base.pc_first + a->imm);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
     return true;
 }
 
@@ -352,7 +352,7 @@ static bool gen_loadr(DisasContext *ctx, arg_r *a, MemOp mop)
         make_shifted(gpr_src(ctx, a->rc), a->shfunc, a->shamt));
 
     tcg_gen_qemu_ld_tl(dest, addr, ctx->mem_idx, mop);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
 
     return true;
 }
@@ -390,7 +390,7 @@ static bool gen_shift(DisasContext *ctx, arg_r3 *a, void (*func)(TCGv, TCGv, TCG
 
     tcg_gen_andi_tl(t0, src2, 31);
     func(dest, src1, src2);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
 
     return true;
 }
@@ -407,7 +407,7 @@ static bool gen_rrr(DisasContext *ctx, arg_r *a, void (*func)(TCGv, TCGv, TCGv))
     TCGv src2 = make_shifted(gpr_src(ctx, a->rc), a->shfunc, a->shamt);
 
     func(dest, src1, src2);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
 
     return true;
 }
@@ -438,7 +438,7 @@ static bool trans_ll(DisasContext *ctx, arg_ll *a)
     tcg_gen_qemu_ld_tl(t1, src1, ctx->mem_idx, MO_LEUL | MO_ALIGN);
     tcg_gen_st_tl(src1, tcg_env, offsetof(CPUXR17032State, lladdr));
     tcg_gen_st_tl(t1, tcg_env, offsetof(CPUXR17032State, llval));
-    gen_set_gpr(a->ra, t1);
+    gen_set_gpr(ctx, a->ra, t1);
 
     return true;
 }
@@ -464,7 +464,7 @@ static bool trans_sc(DisasContext *ctx, arg_sc *a)
                               val, ctx->mem_idx, MO_LEUL | MO_ALIGN);
     tcg_gen_setcond_tl(TCG_COND_EQ, dest, src1, cpu_llval);
     gen_set_label(done);
-    gen_set_gpr(a->ra, dest);
+    gen_set_gpr(ctx, a->ra, dest);
 
     return true;
 }
@@ -613,7 +613,7 @@ static bool trans_mfcr(DisasContext *ctx, arg_mfcr *a)
         }
     }
 
-    gen_set_gpr(a->cr, dest);
+    gen_set_gpr(ctx, a->cr, dest);
     return true;
 }
 
