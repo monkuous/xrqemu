@@ -231,7 +231,7 @@ static void create_fdt_memory(XR17032VirtState *s)
 }
 
 static void create_fdt_lsic(XR17032VirtState *s, uint32_t *phandle,
-                            uint32_t *intc_phandles, uint32_t *plic_phandle)
+                            uint32_t *intc_phandles, uint32_t *lsic_phandle)
 {
     int cpu;
     g_autofree char *lsic_name = NULL;
@@ -239,10 +239,10 @@ static void create_fdt_lsic(XR17032VirtState *s, uint32_t *phandle,
     unsigned long lsic_addr;
     MachineState *ms = MACHINE(s);
 
-    *plic_phandle = (*phandle)++;
+    *lsic_phandle = (*phandle)++;
     lsic_addr = s->memmap[VIRT_LSIC].base;
     lsic_name = g_strdup_printf("/soc/lsic@%lx", lsic_addr);
-    lsic_cells = g_new0(uint32_t, ms->smp.cpus);
+    lsic_cells = g_new0(uint32_t, ms->smp.cpus * 2);
 
     for (cpu = 0; cpu < ms->smp.cpus; cpu++) {
         lsic_cells[cpu * 2 + 0] = cpu_to_be32(intc_phandles[cpu]);
@@ -250,7 +250,7 @@ static void create_fdt_lsic(XR17032VirtState *s, uint32_t *phandle,
     }
 
     qemu_fdt_add_subnode(ms->fdt, lsic_name);
-    qemu_fdt_setprop_cell(ms->fdt, lsic_name, "phandle", *plic_phandle);
+    qemu_fdt_setprop_cell(ms->fdt, lsic_name, "phandle", *lsic_phandle);
     qemu_fdt_setprop_sized_cells(ms->fdt, lsic_name, "reg", 2, lsic_addr,
         2, ms->smp.cpus * XRARCH_LSIC_STRIDE);
     qemu_fdt_setprop_string(ms->fdt, lsic_name, "compatible", "xrarch,lsic");
