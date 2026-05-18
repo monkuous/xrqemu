@@ -229,11 +229,16 @@ static const VMStateDescription vmstate_xrarch_lsic = {
         }
 };
 
+static const Property xrarch_lsic_properties[] = {
+    DEFINE_PROP_UINT32("num-targets", XRarchLSICState, num_targets, 0),
+};
+
 static void xrarch_lsic_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     device_class_set_legacy_reset(dc, xrarch_lsic_reset);
+    device_class_set_props(dc, xrarch_lsic_properties);
     dc->realize = xrarch_lsic_realize;
     dc->vmsd = &vmstate_xrarch_lsic;
 }
@@ -261,6 +266,7 @@ DeviceState *xrarch_lsic_create(hwaddr addr, uint32_t num_targets)
     int i;
     XRarchLSICState *lsic;
 
+    qdev_prop_set_uint32(dev, "num-targets", num_targets);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, addr);
 

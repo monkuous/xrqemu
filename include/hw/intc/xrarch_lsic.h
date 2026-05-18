@@ -36,13 +36,13 @@ struct XRarchLSICState {
 
     /*< public >*/
     MemoryRegion mmio;
-    uint32_t num_targets;
     uint32_t num_masks;
     uint32_t *priorities;
     uint32_t *pending;
     uint32_t *disable;
 
     /* config */
+    uint32_t num_targets;
     qemu_irq *targets;
 };
 
