@@ -62,6 +62,7 @@ enum {
     VIRT_UART0,
     VIRT_FW_CFG,
     VIRT_RTC,
+    VIRT_FDT,
     VIRT_FLASH,
 };
 

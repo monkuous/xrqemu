@@ -48,6 +48,8 @@
 #include "system/reset.h"
 #include "qemu/datadir.h"
 
+#include <libfdt.h>
+
 #define LSIC_SIZE 32
 #define LSIC_SPACE 0x100000
 
@@ -70,6 +72,7 @@ static const MemMapEntry virt_memmap[] = {
     [VIRT_UART0] =        { 0xfb010000,      0x100 },
     [VIRT_FW_CFG] =       { 0xfb020000,       0x18 },
     [VIRT_RTC] =          { 0xfb030000,        0x8 },
+    [VIRT_FDT] =          { 0xfbf00000,   0x100000 },
     [VIRT_FLASH] =        { 0xfc000000,  0x4000000 },
 };
 
@@ -572,6 +575,9 @@ static void virt_machine_done(Notifier *notifier, void *data)
     BlockBackend *pflash_blk0;
     MemoryRegion *mr;
     ssize_t bios_size;
+    hwaddr fdtaddr;
+    uint32_t fdtsize;
+    int ret;
 
     /*
      * An user provided dtb must include everything, including
@@ -590,10 +596,7 @@ static void virt_machine_done(Notifier *notifier, void *data)
             exit(1);
         }
         s->bios_loaded = true;
-        return;
-    }
-
-    if (firmware_name) {
+    } else if (firmware_name) {
         bios_name = qemu_find_file(QEMU_FILE_TYPE_BIOS, firmware_name);
         if (!bios_name) {
             error_report("Could not find ROM image '%s'", firmware_name);
@@ -611,6 +614,17 @@ static void virt_machine_done(Notifier *notifier, void *data)
     }
 
     xr17032_load_kernel(machine);
+
+    ret = fdt_pack(machine->fdt);
+    g_assert(ret == 0);
+
+    fdtsize = fdt_totalsize(machine->fdt);
+    g_assert(fdtsize <= virt_memmap[VIRT_FDT].size);
+    fdtaddr = virt_memmap[VIRT_FDT].base;
+    rom_add_blob_fixed_as("fdt", machine->fdt, fdtsize, fdtaddr,
+                          &address_space_memory);
+    qemu_register_reset_nosnapshotload(qemu_fdt_randomize_seeds, 
+        rom_ptr_for_as(&address_space_memory, fdtaddr, fdtsize));
 }
 
 static void xr17032_cpus_reset(void *opaque)
@@ -623,6 +637,7 @@ static void virt_machine_init(MachineState *machine)
 {
     XR17032VirtState *s = XR17032_VIRT_MACHINE(machine);
     MemoryRegion *system_memory = get_system_memory();
+    MemoryRegion *fdt_rom = g_new(MemoryRegion, 1);
     int i;
 
     s->memmap = virt_memmap;
@@ -653,6 +668,12 @@ static void virt_machine_init(MachineState *machine)
     /* register system main memory (actual RAM) */
     memory_region_add_subregion(system_memory, s->memmap[VIRT_DRAM].base,
                                 machine->ram);
+
+    /* add fdt rom region */
+    memory_region_init_rom(fdt_rom, NULL, "xr17032_virt_board.fdt",
+                           s->memmap[VIRT_FDT].size, &error_fatal);
+    memory_region_add_subregion(system_memory, s->memmap[VIRT_FDT].base,
+                                fdt_rom);
 
     /*
      * Init fw_cfg. Must be done before xr17032_load_fdt, otherwise the
