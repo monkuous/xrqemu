@@ -21,3 +21,4 @@ config XRCOMPUTER
     depends on XR17032
     select XRARCH_LSIC
     select XRARCH_RTC
+    select XRARCH_UART

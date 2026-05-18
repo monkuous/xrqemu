@@ -27,6 +27,7 @@
 #include "system/system.h"
 #include "system/reset.h"
 #include "qemu/datadir.h"
+#include "hw/core/qdev-properties.h"
 
 #define XRCOMPUTER_CPUS_MAX 4
 
@@ -158,6 +159,17 @@ static const MemoryRegionOps revision_ops = {
     }
 };
 
+static void create_serial(DeviceState *irqchip, int memmap, int irq, int id)
+{
+    DeviceState *dev = qdev_new("xrarch.uart");
+
+    qdev_prop_set_chr(dev, "chardev", serial_hd(id));
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
+
+    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0, qdev_get_gpio_in(irqchip, irq));
+    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, xrcomputer_memmap[memmap].base);
+}
+
 static void xrcomputer_init(MachineState *machine)
 {
     XRcomputerState *s = XRCOMPUTER_MACHINE(machine);
@@ -202,6 +214,10 @@ static void xrcomputer_init(MachineState *machine)
     /* initialize rtc */
     sysbus_create_simple("xrarch.rtc", xrcomputer_memmap[XRCOMPUTER_RTC].base,
         qdev_get_gpio_in(irqchip, RTC_IRQ));
+
+    /* initialize serial ports */
+    create_serial(irqchip, XRCOMPUTER_UART0, UART0_IRQ, 0);
+    create_serial(irqchip, XRCOMPUTER_UART1, UART1_IRQ, 1);
 
     /* register system main memory (actual RAM) */
     memory_region_add_subregion(system_memory,
