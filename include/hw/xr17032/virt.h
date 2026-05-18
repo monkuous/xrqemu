@@ -72,7 +72,7 @@ enum {
     VIRTIO_IRQ = 4, /* 4 to 11 */
     VIRTIO_COUNT = 8,
     PCIE_IRQ = 12, /* 12 to 16 */
-    VIRT_PLATFORM_BUS_IRQ = 32, /* 32 to 63 */
+    VIRT_PLATFORM_BUS_IRQ = 16, /* 16 to 47 */
 };
 
 #define VIRT_PLATFORM_BUS_NUM_IRQS 32
