@@ -1,0 +1,15 @@
+config XR17032_VIRT
+    bool
+    default y
+    depends on XR17032 && FDT
+    imply PCI_DEVICES
+    imply VIRTIO_VGA
+    select DEVICE_TREE
+    select XRARCH_LSIC
+    select PCI
+    select PCI_EXPRESS_GENERIC_BRIDGE
+    select PFLASH_CFI01
+    select SERIAL_MM
+    select VIRTIO_MMIO
+    select FW_CFG_DMA
+    select PLATFORM_BUS

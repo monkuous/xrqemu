@@ -19,6 +19,7 @@ subdir('sh4')
 subdir('sparc')
 subdir('sparc64')
 subdir('tricore')
+subdir('xr17032')
 subdir('xtensa')
 
 subdir('9pfs')
