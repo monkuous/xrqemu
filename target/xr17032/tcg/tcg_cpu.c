@@ -158,6 +158,7 @@ static void xr17032_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
                                               uintptr_t retaddr)
 {
     CPUXR17032State *env = cpu_env(cs);
+    env->CR_EBADADDR = physaddr;
     do_raise_exception(env, EXCCODE_BUS, retaddr);
 }
 
