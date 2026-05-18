@@ -613,7 +613,7 @@ static bool trans_mfcr(DisasContext *ctx, arg_mfcr *a)
         }
     }
 
-    gen_set_gpr(ctx, a->cr, dest);
+    gen_set_gpr(ctx, a->gr, dest);
     return true;
 }
 
