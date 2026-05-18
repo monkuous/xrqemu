@@ -36,7 +36,6 @@
 #include "hw/core/platform-bus.h"
 #include "system/device_tree.h"
 #include "system/system.h"
-#include "system/kvm.h"
 #include "hw/pci/pci.h"
 #include "hw/pci-host/gpex.h"
 #include "hw/display/ramfb.h"
@@ -45,10 +44,9 @@
 
 #include <libfdt.h>
 
-#define LSIC_SIZE 32
 #define LSIC_SPACE 0x100000
 
-#if VIRT_CPUS_MAX * LSIC_SIZE > LSIC_SPACE
+#if VIRT_CPUS_MAX * XRARCH_LSIC_STRIDE > LSIC_SPACE
 #error "Too many CPUs, cannot place LSICs"
 #endif
 
@@ -530,9 +528,9 @@ static FWCfgState *create_fw_cfg(const MachineState *ms, hwaddr base)
     return fw_cfg;
 }
 
-static DeviceState *virt_create_lsic(const MemMapEntry *memmap, int hart_count)
+static DeviceState *virt_create_lsic(const MemMapEntry *memmap, int cpu_count)
 {
-    return xrarch_lsic_create(memmap[VIRT_LSIC].base, hart_count);
+    return xrarch_lsic_create(memmap[VIRT_LSIC].base, cpu_count);
 }
 
 static void create_platform_bus(XR17032VirtState *s, DeviceState *irqchip)
@@ -635,13 +633,11 @@ static void virt_machine_init(MachineState *machine)
     MemoryRegion *fdt_rom = g_new(MemoryRegion, 1);
     int i;
 
-#if HOST_LONG_BITS == 64
     /* limit RAM size in a 32-bit system */
     if (machine->ram_size > 3 * GiB) {
         machine->ram_size = 3 * GiB;
         error_report("Limiting RAM size to 3 GiB");
     }
-#endif
 
     s->memmap = virt_memmap;
 
@@ -661,7 +657,7 @@ static void virt_machine_init(MachineState *machine)
     s->irqchip = virt_create_lsic(s->memmap, machine->smp.cpus);
 
     /* Initialize rtc */
-    sysbus_create_simple("xrarch_rtc", s->memmap[VIRT_RTC].base,
+    sysbus_create_simple("xrarch.rtc", s->memmap[VIRT_RTC].base,
         qdev_get_gpio_in(s->irqchip, RTC_IRQ));
 
     /* register system main memory (actual RAM) */
@@ -779,7 +775,6 @@ static void virt_machine_class_init(ObjectClass *oc, const void *data)
     mc->desc = "XR/17032 VirtIO board";
     mc->init = virt_machine_init;
     mc->max_cpus = VIRT_CPUS_MAX;
-    mc->is_default = true;
     mc->default_cpu_type = TYPE_XR17032_CPU_BASE;
     mc->block_default_type = IF_VIRTIO;
     mc->no_cdrom = 1;

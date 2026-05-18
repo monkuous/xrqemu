@@ -21,7 +21,7 @@
 #define CMD_SET_SECONDS 4
 #define CMD_SET_MILLIS 5
 
-#define TYPE_XRARCH_RTC "xrarch_rtc"
+#define TYPE_XRARCH_RTC "xrarch.rtc"
 OBJECT_DECLARE_SIMPLE_TYPE(XRarchRtcState, XRARCH_RTC)
 
 struct XRarchRtcState {
@@ -133,7 +133,7 @@ static void xrarch_rtc_realize(DeviceState *dev, Error **errp)
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     XRarchRtcState *d = XRARCH_RTC(sbd);
     memory_region_init_io(&d->iomem, NULL, &xrarch_rtc_ops,
-                         (void *)d, "xrarch_rtc", 8);
+                         (void *)d, "xrarch.rtc", 8);
 
     sysbus_init_irq(sbd, &d->irq);
 
