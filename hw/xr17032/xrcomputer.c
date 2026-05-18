@@ -115,16 +115,26 @@ static void xr17032_cpus_reset(void *opaque)
     cpu_reset(CPU(cpu));
 }
 
-static void reset_write(void *opaque, hwaddr addr, uint64_t value,
-        unsigned size)
+static MemTxResult reset_read(void *opaque, hwaddr addr, uint64_t *data,
+    unsigned size, MemTxAttrs attrs)
+{
+    return MEMTX_ERROR;
+}
+
+static MemTxResult reset_write(void *opaque, hwaddr addr, uint64_t value,
+        unsigned size, MemTxAttrs attrs)
 {
     if (value == RESET_MAGIC) {
         bus_cold_reset(sysbus_get_default());
+        return MEMTX_OK;
     }
+
+    return MEMTX_ERROR;
 }
 
 static const MemoryRegionOps reset_ops = {
-    .write = reset_write,
+    .read_with_attrs = reset_read,
+    .write_with_attrs = reset_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
     .valid = {
         .min_access_size = 4,
