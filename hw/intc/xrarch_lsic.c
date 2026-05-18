@@ -37,7 +37,7 @@ static int xrarch_lsic_claimed(XRarchLSICState *lsic, uint32_t targetid)
 
     for (i = 0; i < max_idx; i++) {
         uint32_t index = targetid * 2 + i;
-        uint32_t pending_enabled = lsic->pending[index] & lsic->disable[index];
+        uint32_t pending_enabled = lsic->pending[index] & ~lsic->disable[index];
 
         if (!pending_enabled) {
             continue;
