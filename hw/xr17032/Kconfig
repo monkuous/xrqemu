@@ -6,6 +6,7 @@ config XR17032_VIRT
     imply VIRTIO_VGA
     select DEVICE_TREE
     select XRARCH_LSIC
+    select XRARCH_RTC
     select PCI
     select PCI_EXPRESS_GENERIC_BRIDGE
     select PFLASH_CFI01

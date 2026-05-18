@@ -34,17 +34,12 @@
 #include "hw/xr17032/boot.h"
 #include "hw/intc/xrarch_lsic.h"
 #include "hw/core/platform-bus.h"
-#include "chardev/char.h"
 #include "system/device_tree.h"
 #include "system/system.h"
-#include "system/tcg.h"
 #include "system/kvm.h"
-#include "system/qtest.h"
 #include "hw/pci/pci.h"
 #include "hw/pci-host/gpex.h"
 #include "hw/display/ramfb.h"
-#include "qapi/qapi-visit-common.h"
-#include "hw/virtio/virtio-iommu.h"
 #include "system/reset.h"
 #include "qemu/datadir.h"
 
@@ -68,7 +63,7 @@ static const MemMapEntry virt_memmap[] = {
     [VIRT_LSIC] =         { 0xf0000000, LSIC_SPACE },
     [VIRT_PLATFORM_BUS] = { 0xf8000000,  0x2000000 },
     [VIRT_PCIE_PIO] =     { 0xfa000000,    0x10000 },
-    [VIRT_VIRTIO] =       { 0xfb000000,     0x1000 },
+    [VIRT_VIRTIO] =       { 0xfb000000,     0x1000 }, /* actually takes 0x8000 */
     [VIRT_UART0] =        { 0xfb010000,      0x100 },
     [VIRT_FW_CFG] =       { 0xfb020000,       0x18 },
     [VIRT_RTC] =          { 0xfb030000,        0x8 },
@@ -257,7 +252,7 @@ static void create_fdt_lsic(XR17032VirtState *s, uint32_t *phandle,
     qemu_fdt_add_subnode(ms->fdt, lsic_name);
     qemu_fdt_setprop_cell(ms->fdt, lsic_name, "phandle", *plic_phandle);
     qemu_fdt_setprop_sized_cells(ms->fdt, lsic_name, "reg", 2, lsic_addr,
-        2, s->memmap[VIRT_LSIC].size);
+        2, ms->smp.cpus * XRARCH_LSIC_STRIDE);
     qemu_fdt_setprop_string(ms->fdt, lsic_name, "compatible", "xrarch,lsic");
     qemu_fdt_setprop(ms->fdt, lsic_name, "interrupts-extended", lsic_cells,
                      ms->smp.cpus * sizeof(uint32_t) * 2);
@@ -640,6 +635,14 @@ static void virt_machine_init(MachineState *machine)
     MemoryRegion *fdt_rom = g_new(MemoryRegion, 1);
     int i;
 
+#if HOST_LONG_BITS == 64
+    /* limit RAM size in a 32-bit system */
+    if (machine->ram_size > 3 * GiB) {
+        machine->ram_size = 3 * GiB;
+        error_report("Limiting RAM size to 3 GiB");
+    }
+#endif
+
     s->memmap = virt_memmap;
 
     s->cpus = g_new0(XR17032CPU, machine->smp.cpus);
@@ -657,13 +660,9 @@ static void virt_machine_init(MachineState *machine)
     /* Initialize irqchip */
     s->irqchip = virt_create_lsic(s->memmap, machine->smp.cpus);
 
-#if HOST_LONG_BITS == 64
-    /* limit RAM size in a 32-bit system */
-    if (machine->ram_size > 3 * GiB) {
-        machine->ram_size = 3 * GiB;
-        error_report("Limiting RAM size to 3 GiB");
-    }
-#endif
+    /* Initialize rtc */
+    sysbus_create_simple("xrarch_rtc", s->memmap[VIRT_RTC].base,
+        qdev_get_gpio_in(s->irqchip, RTC_IRQ));
 
     /* register system main memory (actual RAM) */
     memory_region_add_subregion(system_memory, s->memmap[VIRT_DRAM].base,
