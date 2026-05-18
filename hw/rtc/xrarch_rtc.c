@@ -76,7 +76,7 @@ static void xrarch_rtc_write(void *opaque, hwaddr addr,
     case SYS_RTCCMD:
         switch (val) {
         case CMD_SET_INTERVAL:
-            s->interval = val;
+            s->interval = s->data;
             s->last_time = qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL);
             xrarch_rtc_update(s);
             break;
@@ -94,7 +94,7 @@ static void xrarch_rtc_write(void *opaque, hwaddr addr,
         case CMD_SET_MILLIS:
             time = get_rtc_time(s);
             time -= time % 1000;
-            time += val % 1000;
+            time += s->data % 1000;
             s->offset_rtc = time - qemu_clock_get_ms(rtc_clock);
             break;
         default:
@@ -124,6 +124,7 @@ static void rtc_timer_cb(void *opaque)
 {
     XRarchRtcState *s = opaque;
     s->last_time += s->interval;
+    xrarch_rtc_update(s);
     qemu_irq_raise(s->irq);
 }
 
