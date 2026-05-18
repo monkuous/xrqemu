@@ -48,26 +48,29 @@ static void xrarch_rtc_update(XRarchRtcState *s)
     timer_mod(s->timer, s->last_time + s->interval);
 }
 
-static uint64_t xrarch_rtc_read(void *opaque, hwaddr addr, unsigned size)
+static MemTxResult xrarch_rtc_read(void *opaque, hwaddr addr, uint64_t *value,
+    unsigned size, MemTxAttrs attrs)
 {
     XRarchRtcState *s = XRARCH_RTC(opaque);
 
     switch (addr) {
     case SYS_RTCCMD:
-        return 0;
+        *value = 0;
+        return MEMTX_OK;
     case SYS_RTCDATA:
-        return s->data;
-    default:
-        return 0;
+        *value = s->data;
+        return MEMTX_OK;
     }
+
+    return MEMTX_ERROR;
 }
 
 static int64_t get_rtc_time(XRarchRtcState *s) {
     return qemu_clock_get_ms(rtc_clock) - s->offset_rtc;
 }
 
-static void xrarch_rtc_write(void *opaque, hwaddr addr,
-                             uint64_t val, unsigned size)
+static MemTxResult xrarch_rtc_write(void *opaque, hwaddr addr, uint64_t val,
+    unsigned size, MemTxAttrs attrs)
 {
     int64_t time;
     XRarchRtcState *s = XRARCH_RTC(opaque);
@@ -79,40 +82,38 @@ static void xrarch_rtc_write(void *opaque, hwaddr addr,
             s->interval = s->data;
             s->last_time = qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL);
             xrarch_rtc_update(s);
-            break;
+            return MEMTX_OK;
         case CMD_GET_SECONDS:
             s->data = get_rtc_time(s) / 1000;
-            break;
+            return MEMTX_OK;
         case CMD_GET_MILLIS:
             s->data = get_rtc_time(s) % 1000;
-            break;
+            return MEMTX_OK;
         case CMD_SET_SECONDS:
             time = s->data * 1000;
             time += get_rtc_time(s) % 1000;
             s->offset_rtc = time - qemu_clock_get_ms(rtc_clock);
-            break;
+            return MEMTX_OK;
         case CMD_SET_MILLIS:
             time = get_rtc_time(s);
             time -= time % 1000;
             time += s->data % 1000;
             s->offset_rtc = time - qemu_clock_get_ms(rtc_clock);
-            break;
-        default:
-            break;
+            return MEMTX_OK;
         }
 
         break;
     case SYS_RTCDATA:
         s->data = val;
-        break;
-    default:
-        break;
+        return MEMTX_OK;
     }
+
+    return MEMTX_ERROR;
 }
 
 static const MemoryRegionOps xrarch_rtc_ops = {
-    .read = xrarch_rtc_read,
-    .write = xrarch_rtc_write,
+    .read_with_attrs = xrarch_rtc_read,
+    .write_with_attrs = xrarch_rtc_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
     .valid = {
         .min_access_size = 4,

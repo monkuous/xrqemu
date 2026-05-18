@@ -62,55 +62,60 @@ static void xrarch_lsic_update(XRarchLSICState *lsic, uint32_t targetid)
     qemu_set_irq(lsic->targets[targetid], level);
 }
 
-static uint64_t xrarch_lsic_read(void *opaque, hwaddr addr, unsigned size)
+static MemTxResult xrarch_lsic_read(void *opaque, hwaddr addr, uint64_t *value,
+    unsigned size, MemTxAttrs attrs)
 {
     XRarchLSICState *lsic = opaque;
     uint32_t targetid = addr / XRARCH_LSIC_STRIDE;
 
-    if (targetid < lsic->num_targets) {
+    if (targetid < lsic->num_targets && lsic->targets[targetid] != NULL) {
         switch (addr % XRARCH_LSIC_STRIDE) {
         case 0: /* DISA0 */
-            return lsic->disable[targetid * 2];
+            *value = lsic->disable[targetid * 2];
+            return MEMTX_OK;
         case 4: /* DISA1 */
-            return lsic->disable[targetid * 2 + 1];
+            *value = lsic->disable[targetid * 2 + 1];
+            return MEMTX_OK;
         case 8: /* PEND0 */
-            return lsic->pending[targetid * 2];
+            *value = lsic->pending[targetid * 2];
+            return MEMTX_OK;
         case 12: /* PEND1 */
-            return lsic->pending[targetid * 2 + 1];
+            *value = lsic->pending[targetid * 2 + 1];
+            return MEMTX_OK;
         case 16: /* CLAIM */
-            return xrarch_lsic_claimed(lsic, targetid);
+            *value = xrarch_lsic_claimed(lsic, targetid);
+            return MEMTX_OK;
         case 20: /* IPL */
-            return lsic->priorities[targetid];
-        default:
-            break;
+            *value = lsic->priorities[targetid];
+            return MEMTX_OK;
         }
     }
 
     qemu_log_mask(LOG_GUEST_ERROR,
                 "%s: Invalid register read 0x%" HWADDR_PRIx "\n",
                 __func__, addr);
-    return 0;
+    return MEMTX_ERROR;
 }
 
-static void xrarch_lsic_write(void *opaque, hwaddr addr, uint64_t value,
-        unsigned size)
+static MemTxResult xrarch_lsic_write(void *opaque, hwaddr addr, uint64_t value,
+        unsigned size, MemTxAttrs attrs)
 {
     XRarchLSICState *lsic = opaque;
 
     uint32_t targetid = addr / XRARCH_LSIC_STRIDE;
 
-    if (targetid < lsic->num_targets) {
+    if (targetid < lsic->num_targets && lsic->targets[targetid] != NULL) {
         switch (addr % XRARCH_LSIC_STRIDE) {
         case 0: /* DISA0 */
             lsic->disable[targetid * 2] = value;
 
             xrarch_lsic_update(lsic, targetid);
-            return;
+            return MEMTX_OK;
         case 4: /* DISA1 */
             lsic->disable[targetid * 2 + 1] = value;
 
             xrarch_lsic_update(lsic, targetid);
-            return;
+            return MEMTX_OK;
         case 8: /* PEND0 */
             if (value == 0) {
                 lsic->pending[targetid * 2] = 0;
@@ -119,7 +124,7 @@ static void xrarch_lsic_write(void *opaque, hwaddr addr, uint64_t value,
             }
 
             xrarch_lsic_update(lsic, targetid);
-            return;
+            return MEMTX_OK;
         case 12: /* PEND1 */
             if (value == 0) {
                 lsic->pending[targetid * 2 + 1] = 0;
@@ -128,25 +133,23 @@ static void xrarch_lsic_write(void *opaque, hwaddr addr, uint64_t value,
             }
 
             xrarch_lsic_update(lsic, targetid);
-            return;
+            return MEMTX_OK;
         case 16: /* CLAIM */
             if (value >= 64) {
-                break;
+                return MEMTX_ERROR;
             }
 
             qatomic_and(&lsic->pending[targetid * 2 + (value >> 5)], ~(1U << (value & 31)));
             xrarch_lsic_update(lsic, targetid);
-            return;
+            return MEMTX_OK;
         case 20: /* IPL */
             if (value >= 64) {
-                break;
+                return MEMTX_ERROR;
             }
 
             lsic->priorities[targetid] = value;
             xrarch_lsic_update(lsic, targetid);
-            return;
-        default:
-            break;
+            return MEMTX_OK;
         }
     }
 
@@ -154,11 +157,12 @@ static void xrarch_lsic_write(void *opaque, hwaddr addr, uint64_t value,
                   "%s: Invalid register write 0x%" HWADDR_PRIx
                   " (0x%" PRIx64 ")\n",
                   __func__, addr, value);
+    return MEMTX_ERROR;
 }
 
 static const MemoryRegionOps xrarch_lsic_ops = {
-    .read = xrarch_lsic_read,
-    .write = xrarch_lsic_write,
+    .read_with_attrs = xrarch_lsic_read,
+    .write_with_attrs = xrarch_lsic_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
     .valid = {
         .min_access_size = 4,
@@ -186,6 +190,10 @@ static void xrarch_lsic_irq_request(void *opaque, int irq, int level)
 
     if (level > 0) {
         for (uint32_t targetid = 0; targetid < s->num_targets; targetid++) {
+            if (s->targets[targetid] == NULL) {
+                continue;
+            }
+
             qatomic_or(&s->pending[targetid * 2 + (irq >> 5)], 1U << (irq & 31));
             xrarch_lsic_update(s, targetid);
         }
