@@ -39,6 +39,8 @@
 
 #define RESET_MAGIC 0xaabbccdd
 
+#define XRCOMPUTER_NVRAM_SECTOR_SIZE 4096
+
 enum {
     XRCOMPUTER_DRAM,
     XRCOMPUTER_BOARD,
@@ -48,6 +50,7 @@ enum {
     XRCOMPUTER_RTC,
     XRCOMPUTER_AMTSU,
     XRCOMPUTER_REV,
+    XRCOMPUTER_NVRAM,
     XRCOMPUTER_LSIC,
     XRCOMPUTER_RESET,
     XRCOMPUTER_FW,
@@ -77,10 +80,52 @@ static const MemMapEntry xrcomputer_memmap[] = {
     [XRCOMPUTER_RTC] =   { 0xf8000080,        0x8 },
     [XRCOMPUTER_AMTSU] = { 0xf80000c0,       0x10 },
     [XRCOMPUTER_REV] =   { 0xf8000800,       0x80 },
+    [XRCOMPUTER_NVRAM] = { 0xf8001000,     0x1000 },
     [XRCOMPUTER_LSIC] =  { 0xf8030000, LSIC_SPACE },
     [XRCOMPUTER_RESET] = { 0xf8800000,        0x4 },
     [XRCOMPUTER_FW] =    { 0xfffe0000,    0x20000 },
 };
+
+static PFlashCFI01 *xrcomputer_nvram_create1(XRcomputerState *s,
+    const char *name, const char *alias_prop_name)
+{
+    /*
+     * Create a single flash device.  We use the same parameters as
+     * the flash devices on the ARM virt board.
+     */
+    DeviceState *dev = qdev_new(TYPE_PFLASH_CFI01);
+
+    qdev_prop_set_uint64(dev, "sector-length", XRCOMPUTER_NVRAM_SECTOR_SIZE);
+    qdev_prop_set_uint8(dev, "width", 4);
+    qdev_prop_set_uint8(dev, "device-width", 2);
+    qdev_prop_set_bit(dev, "big-endian", false);
+    qdev_prop_set_uint16(dev, "id0", 0x89);
+    qdev_prop_set_uint16(dev, "id1", 0x18);
+    qdev_prop_set_uint16(dev, "id2", 0x00);
+    qdev_prop_set_uint16(dev, "id3", 0x00);
+    qdev_prop_set_string(dev, "name", name);
+
+    object_property_add_child(OBJECT(s), name, OBJECT(dev));
+    object_property_add_alias(OBJECT(s), alias_prop_name,
+                              OBJECT(dev), "drive");
+
+    return PFLASH_CFI01(dev);
+}
+
+static void xrcomputer_nvram_map1(PFlashCFI01 *flash, hwaddr base, hwaddr size,
+    MemoryRegion *sysmem)
+{
+    DeviceState *dev = DEVICE(flash);
+
+    assert(QEMU_IS_ALIGNED(size, XRCOMPUTER_NVRAM_SECTOR_SIZE));
+    assert(size / XRCOMPUTER_NVRAM_SECTOR_SIZE <= UINT32_MAX);
+    qdev_prop_set_uint32(dev, "num-blocks",
+        size / XRCOMPUTER_NVRAM_SECTOR_SIZE);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
+
+    memory_region_add_subregion(sysmem, base,
+        sysbus_mmio_get_region(SYS_BUS_DEVICE(dev), 0));
+}
 
 static void xrcomputer_done(Notifier *notifier, void *data)
 {
@@ -229,6 +274,12 @@ static void xrcomputer_init(MachineState *machine)
     create_serial(irqchip, XRCOMPUTER_UART0, UART0_IRQ, 0);
     create_serial(irqchip, XRCOMPUTER_UART1, UART1_IRQ, 1);
 
+    /* initialize nvram */
+    pflash_cfi01_legacy_drive(s->nvram,
+        drive_get(IF_PFLASH, 0, 0));
+    xrcomputer_nvram_map1(s->nvram, xrcomputer_memmap[XRCOMPUTER_NVRAM].base,
+        xrcomputer_memmap[XRCOMPUTER_NVRAM].size, system_memory);
+
     /* register system main memory (actual RAM) */
     memory_region_add_subregion(system_memory,
         xrcomputer_memmap[XRCOMPUTER_DRAM].base, machine->ram);
@@ -241,6 +292,13 @@ static void xrcomputer_init(MachineState *machine)
 
     s->machine_done.notify = xrcomputer_done;
     qemu_add_machine_init_done_notifier(&s->machine_done);
+}
+
+static void xrcomputer_instance_init(Object *obj)
+{
+    XRcomputerState *s = XRCOMPUTER_MACHINE(obj);
+
+    s->nvram = xrcomputer_nvram_create1(s, "xrcomputer.nvram", "nvram");
 }
 
 static const CPUArchIdList *xrcomputer_possible_cpu_arch_ids(MachineState *ms)
@@ -297,6 +355,7 @@ static const TypeInfo xrcomputer_typeinfo = {
     .name       = TYPE_XRCOMPUTER_MACHINE,
     .parent     = TYPE_MACHINE,
     .class_init = xrcomputer_class_init,
+    .instance_init = xrcomputer_instance_init,
     .instance_size = sizeof(XRcomputerState),
     .interfaces = (const InterfaceInfo[]) {
          { }

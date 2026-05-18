@@ -22,3 +22,4 @@ config XRCOMPUTER
     select XRARCH_LSIC
     select XRARCH_RTC
     select XRARCH_UART
+    select PFLASH_CFI01

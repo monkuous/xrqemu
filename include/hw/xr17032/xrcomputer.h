@@ -20,6 +20,7 @@
 #define HW_XR17032_XRCOMPUTER_H
 
 #include "hw/core/boards.h"
+#include "hw/block/flash.h"
 
 #define TYPE_XRCOMPUTER_MACHINE MACHINE_TYPE_NAME("xrcomputer")
 typedef struct XRcomputerState XRcomputerState;
@@ -29,6 +30,7 @@ DECLARE_INSTANCE_CHECKER(XRcomputerState, XRCOMPUTER_MACHINE,
 struct XRcomputerState {
     /*< private >*/
     MachineState parent;
+    PFlashCFI01 *nvram;
     MemoryRegion fw_rom;
     MemoryRegion reset;
     MemoryRegion revision;
