@@ -560,6 +560,8 @@ void xr17032_cr_translate_init(void)
 {
     SET_CR_FUNC(ITBPTE, NULL, gen_helper_crwr_itbpte);
     SET_CR_FUNC(DTBPTE, NULL, gen_helper_crwr_dtbpte);
+    SET_CR_FUNC(ITBINDEX, NULL, gen_helper_crwr_itbindex);
+    SET_CR_FUNC(DTBINDEX, NULL, gen_helper_crwr_dtbindex);
     SET_CR_FUNC(ITBCTRL, NULL, gen_helper_crwr_itbctrl);
     SET_CR_FUNC(DTBCTRL, NULL, gen_helper_crwr_dtbctrl);
 }

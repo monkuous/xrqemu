@@ -17,3 +17,13 @@
 #include "hw/core/irq.h"
 #include "cpu-cr.h"
 #include "cpu-mmu.h"
+
+void helper_crwr_itbindex(CPUXR17032State *env, target_ulong value)
+{
+    env->CR_ITBINDEX = value % XR17032_TB_MAX;
+}
+
+void helper_crwr_dtbindex(CPUXR17032State *env, target_ulong value)
+{
+    env->CR_DTBINDEX = value % XR17032_TB_MAX;
+}

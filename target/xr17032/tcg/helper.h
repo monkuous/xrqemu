@@ -9,6 +9,8 @@ DEF_HELPER_2(raise_exception, noreturn, env, i32)
 /* CRs helper */
 DEF_HELPER_2(crwr_itbpte, void, env, tl)
 DEF_HELPER_2(crwr_dtbpte, void, env, tl)
+DEF_HELPER_2(crwr_itbindex, void, env, tl)
+DEF_HELPER_2(crwr_dtbindex, void, env, tl)
 DEF_HELPER_2(crwr_itbctrl, void, env, tl)
 DEF_HELPER_2(crwr_dtbctrl, void, env, tl)
 /*DEF_HELPER_1(csrrd_pgd, i64, env)
