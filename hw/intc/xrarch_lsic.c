@@ -68,7 +68,7 @@ static uint64_t xrarch_lsic_read(void *opaque, hwaddr addr, unsigned size)
     uint32_t targetid = addr / XRARCH_LSIC_STRIDE;
 
     if (targetid < lsic->num_targets) {
-        switch (targetid % XRARCH_LSIC_STRIDE) {
+        switch (addr % XRARCH_LSIC_STRIDE) {
         case 0: /* DISA0 */
             return lsic->disable[targetid * 2];
         case 4: /* DISA1 */
@@ -100,7 +100,7 @@ static void xrarch_lsic_write(void *opaque, hwaddr addr, uint64_t value,
     uint32_t targetid = addr / XRARCH_LSIC_STRIDE;
 
     if (targetid < lsic->num_targets) {
-        switch (targetid % XRARCH_LSIC_STRIDE) {
+        switch (addr % XRARCH_LSIC_STRIDE) {
         case 0: /* DISA0 */
             lsic->disable[targetid * 2] = value;
 
