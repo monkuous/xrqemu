@@ -1,0 +1,181 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# XR/17032 instruction decode definitions.
+#
+# Copyright (c) 2026 monkuous
+#
+
+#
+# Fields
+#
+%jump      3:29         !function=shl_2
+%branch    11:s21       !function=shl_2
+%int1      16:16        !function=shl_1
+%int2      16:16        !function=shl_2
+%int16     16:16        !function=shl_16
+
+#
+# Argument sets
+#
+&j            imm
+&b            imm                 ra
+&i            imm              rb ra
+&m            imm          val    ra
+&r            shfunc shamt rc  rb ra
+&r3                        rc  rb ra
+&r2                            rb ra
+&empty
+&cr                        cr     gr
+
+#
+# Formats
+#
+@jump         .............................                ...  &j imm=%jump
+@branch       .....................              ra:5  ... ...  &b imm=%branch
+@uimm         imm:16                      rb:5   ra:5  ... ...  &i
+@simm         imm:s16                     rb:5   ra:5  ... ...  &i
+@uimm16       ................            rb:5   ra:5  ... ...  &i imm=%int16
+@uimm1        ................            rb:5   ra:5  ... ...  &i imm=%int1
+@uimm2        ................            rb:5   ra:5  ... ...  &i imm=%int2
+@mimm         imm:16                      val:s5 ra:5  ... ...  &m
+@mimm1        ................            val:s5 ra:5  ... ...  &m imm=%int1
+@mimm2        ................            val:s5 ra:5  ... ...  &m imm=%int2
+@adr          ................            .....  ra:5  ... ...  &b imm=%int16
+@r            .... shfunc:2 shamt:5 rc:5  rb:5   ra:5  ... ...  &r
+@r3           .... ..       .....   rc:5  rb:5   ra:5  ... ...  &r3
+@r2           .... ..       .....   ..... rb:5   ra:5  ... ...  &r2
+@empty        .... ..       .....   ..... .....  ..... ... ...  &empty
+@mfcr         .... ..       .....   cr:5  .....  gr:5  ... ...  &cr
+@mtcr         .... ..       .....   cr:5  gr:5   ..... ... ...  &cr
+
+#
+# Jump instructions (x x 111..110)
+#
+jal           .... .. ..... ..... ..... ..... ... 111 @jump
+j             .... .. ..... ..... ..... ..... ... 110 @jump
+
+#
+# Branch instructions (x x 101)
+#
+beq           .... .. ..... ..... ..... ..... 111 101 @branch
+bne           .... .. ..... ..... ..... ..... 110 101 @branch
+blt           .... .. ..... ..... ..... ..... 101 101 @branch
+bgt           .... .. ..... ..... ..... ..... 100 101 @branch
+ble           .... .. ..... ..... ..... ..... 011 101 @branch
+bge           .... .. ..... ..... ..... ..... 010 101 @branch
+bpe           .... .. ..... ..... ..... ..... 001 101 @branch
+bpo           .... .. ..... ..... ..... ..... 000 101 @branch
+
+#
+# Immediate arithmetic instructions (x x 100)
+#
+addi          .... .. ..... ..... ..... ..... 111 100 @uimm
+subi          .... .. ..... ..... ..... ..... 110 100 @uimm
+slti          .... .. ..... ..... ..... ..... 101 100 @uimm
+sltis         .... .. ..... ..... ..... ..... 100 100 @simm
+andi          .... .. ..... ..... ..... ..... 011 100 @uimm
+xori          .... .. ..... ..... ..... ..... 010 100 @uimm
+ori           .... .. ..... ..... ..... ..... 001 100 @uimm
+lui           .... .. ..... ..... ..... ..... 000 100 @uimm16
+
+#
+# Immediate load instructions (x x 011)
+#
+mov1_reg_imm  .... .. ..... ..... ..... ..... 111 011 @uimm
+mov2_reg_imm  .... .. ..... ..... ..... ..... 110 011 @uimm1
+mov4_reg_imm  .... .. ..... ..... ..... ..... 101 011 @uimm2
+# unused
+# unused
+# unused
+# unused
+# unused
+
+#
+# Immediate store instructions (x x 010)
+#
+mov1_imm_reg  .... .. ..... ..... ..... ..... 111 010 @uimm
+mov2_imm_reg  .... .. ..... ..... ..... ..... 110 010 @uimm1
+mov4_imm_reg  .... .. ..... ..... ..... ..... 101 010 @uimm2
+# unused
+mov1_imm_val  .... .. ..... ..... ..... ..... 011 010 @mimm
+mov2_imm_val  .... .. ..... ..... ..... ..... 010 010 @mimm1
+mov4_imm_val  .... .. ..... ..... ..... ..... 001 010 @mimm2
+# unused
+
+#
+# Miscellaneous immediate instructions (x x 000)
+#
+jalr          .... .. ..... ..... ..... ..... 111 000 @uimm2
+adr           .... .. ..... ..... ----- ..... 110 000 @adr
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused
+
+#
+# Register memory instructions (1111..1001 111 001)
+#
+mov1_reg_off  1111 .. ..... ..... ..... ..... 111 001 @r
+mov2_reg_off  1110 .. ..... ..... ..... ..... 111 001 @r
+mov4_reg_off  1101 .. ..... ..... ..... ..... 111 001 @r
+# unused
+mov1_off_reg  1011 .. ..... ..... ..... ..... 111 001 @r
+mov2_off_reg  1010 .. ..... ..... ..... ..... 111 001 @r
+mov4_off_reg  1001 .. ..... ..... ..... ..... 111 001 @r
+
+#
+# Register arithmetic instructions (1000..0000 111 001)
+#
+lsh           1000 00 ----- ..... ..... ..... 111 001 @r3
+rsh           1000 01 ----- ..... ..... ..... 111 001 @r3
+ash           1000 10 ----- ..... ..... ..... 111 001 @r3
+ror           1000 11 ----- ..... ..... ..... 111 001 @r3
+add           0111 .. ..... ..... ..... ..... 111 001 @r
+sub           0110 .. ..... ..... ..... ..... 111 001 @r
+slt           0101 .. ..... ..... ..... ..... 111 001 @r
+slts          0100 .. ..... ..... ..... ..... 111 001 @r
+and           0011 .. ..... ..... ..... ..... 111 001 @r
+xor           0010 .. ..... ..... ..... ..... 111 001 @r
+or            0001 .. ..... ..... ..... ..... 111 001 @r
+nor           0000 .. ..... ..... ..... ..... 111 001 @r
+
+# Miscellaneous unprivileged instructions (x 110 001)
+#
+mul           1111 .. ..... ..... ..... ..... 110 001 @r
+# unused
+div           1101 .. ..... ..... ..... ..... 110 001 @r
+divs          1100 .. ..... ..... ..... ..... 110 001 @r
+mod           1011 .. ..... ..... ..... ..... 110 001 @r
+# unused
+ll            1001 -- ----- ----- ..... ..... 110 001 @r2
+sc            1000 -- ----- ..... ..... ..... 110 001 @r3
+# unused
+pause         0110 -- ----- ----- ----- ----- 110 001 @empty
+# unused
+# unused
+mb            0011 -- ----- ----- ----- ----- 110 001 @empty
+wmb           0010 -- ----- ----- ----- ----- 110 001 @empty
+brk           0001 -- ----- ----- ----- ----- 110 001 @empty
+sys           0000 -- ----- ----- ----- ----- 110 001 @empty
+
+#
+# Privileged instructions (x 101 001)
+#
+mfcr          1111 -- ----- ..... ----- ..... 101 001 @mfcr
+mtcr          1110 -- ----- ..... ..... ----- 101 001 @mtcr
+# unused
+hlt           1100 -- ----- ----- ----- ----- 101 001 @empty
+rfe           1011 -- ----- ----- ----- ----- 101 001 @empty
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused
+# unused

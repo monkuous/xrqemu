@@ -197,6 +197,7 @@ typedef struct mips_elf_abiflags_v0 {
  * up with a final number.
  */
 #define EM_ALPHA            0x9026
+#define EM_XR17032          0xb5f0
 
 /* Bogus old v850 magic number, used by old tools.  */
 #define EM_CYGNUS_V850      0x9080

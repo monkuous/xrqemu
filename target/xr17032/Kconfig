@@ -1,0 +1,2 @@
+config XR17032
+    bool

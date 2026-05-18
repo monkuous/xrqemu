@@ -47,6 +47,7 @@ MAP = {
     "sparc:v8plus": ["sparc32plus"],
     "sparc:v9a" : ["sparc64"],
     # no tricore in upstream gdb
+    "xr17032" : ["xr17032"],
     "xtensa" : ["xtensa", "xtensaeb"]
 }
 
