@@ -36,6 +36,8 @@ static void amtsu_device_reset(DeviceState *dev)
     AmtsuDeviceClass *dc = AMTSU_DEVICE_GET_CLASS(d);
 
     d->irqs_enabled = false;
+    d->dataA = 0;
+    d->dataB = 0;
 
     if (dc->reset) {
         dc->reset(d);
@@ -374,6 +376,8 @@ static void amtsu_bridge_reset(DeviceState *dev)
     AmtsuBridge *d = AMTSU_BRIDGE(dev);
 
     d->device = 0;
+    d->dataA = 0;
+    d->dataB = 0;
 }
 
 static void amtsu_bridge_realize(DeviceState *dev, Error **errp)
