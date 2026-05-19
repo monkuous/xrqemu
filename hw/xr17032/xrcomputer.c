@@ -26,6 +26,7 @@
 #include "hw/intc/xrarch_lsic.h"
 #include "hw/rtc/xrarch_rtc.h"
 #include "hw/char/xrarch_uart.h"
+#include "hw/block/xrarch_disk.h"
 #include "hw/input/amtsu.h"
 #include "system/system.h"
 #include "system/reset.h"
@@ -289,6 +290,11 @@ static void xrcomputer_init(MachineState *machine)
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0,
         xrcomputer_memmap[XRCOMPUTER_AMTSU].base);
+
+    /* initialize disk */
+    sysbus_create_simple(TYPE_XRARCH_DISK_CTRL,
+        xrcomputer_memmap[XRCOMPUTER_DISK].base,
+        qdev_get_gpio_in(irqchip, DISK_IRQ));
 
     for (i = 0; i < 4; i++) {
         irq = qdev_get_gpio_in(irqchip, AMTSU_IRQ + i);
