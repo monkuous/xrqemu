@@ -90,4 +90,21 @@ struct AmtsuBridge {
 #define TYPE_AMTSU_BRIDGE "amtsu-bridge"
 OBJECT_DECLARE_SIMPLE_TYPE(AmtsuBridge, AMTSU_BRIDGE)
 
+#define AMTSU_MAX_KEYCODE 0x55
+#define AMTSU_KBD_BITMAP_SIZE ((AMTSU_MAX_KEYCODE + 32) / 32)
+
+struct AmtsuKeyboard {
+    /*< private >*/
+    AmtsuDevice parent_obj;
+
+    uint32_t release_queued[AMTSU_KBD_BITMAP_SIZE];
+    uint32_t press_queued[AMTSU_KBD_BITMAP_SIZE];
+    uint32_t pressed[AMTSU_KBD_BITMAP_SIZE];
+
+    /*< public >*/
+};
+
+#define TYPE_AMTSU_KBD "amtsu-kbd"
+OBJECT_DECLARE_SIMPLE_TYPE(AmtsuKeyboard, AMTSU_KBD)
+
 #endif

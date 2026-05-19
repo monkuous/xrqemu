@@ -40,6 +40,7 @@ struct XRcomputerState {
 
     DeviceState *irqchip;
     DeviceState *ebus[XRCOMPUTER_EBUS_COUNT];
+    BusState *amtsu;
 
     bool headless;
 

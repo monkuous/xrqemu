@@ -296,6 +296,8 @@ static void xrcomputer_init(MachineState *machine)
         sysbus_connect_irq(SYS_BUS_DEVICE(dev), i, irq);
     }
 
+    s->amtsu = BUS(AMTSU_BRIDGE(dev)->bus);
+
     /* initialize disk */
     sysbus_create_simple(TYPE_XRARCH_DISK_CTRL,
         xrcomputer_memmap[XRCOMPUTER_DISK].base,
@@ -305,6 +307,10 @@ static void xrcomputer_init(MachineState *machine)
         /* add kinnowfb */
         dev = qdev_new("kinnowfb");
         sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
+
+        /* add keyboard */
+        dev = qdev_new(TYPE_AMTSU_KBD);
+        qdev_realize_and_unref(dev, s->amtsu, &error_fatal);
     }
 
     /* register system main memory (actual RAM) */
