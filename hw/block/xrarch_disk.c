@@ -242,8 +242,8 @@ static MemTxResult xrarch_disk_ctrl_write(void *opaque, hwaddr addr,
     case REG_CMD:
         switch (value) {
         case CMD_SELECT:
-            if (value < XRARCH_MAX_DISK && d->drives[value].blk) {
-                d->drive = value;
+            if (d->dataA < XRARCH_MAX_DISK && d->drives[d->dataA].blk) {
+                d->drive = d->dataA;
             } else {
                 d->drive = -1;
             }
