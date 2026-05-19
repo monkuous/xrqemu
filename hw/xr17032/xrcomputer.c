@@ -33,6 +33,7 @@
 #include "qemu/datadir.h"
 #include "hw/core/qdev-properties.h"
 #include "hw/misc/ebus.h"
+#include "qemu/option.h"
 
 #define XRCOMPUTER_CPUS_MAX 4
 
@@ -237,6 +238,8 @@ static void xrcomputer_init(MachineState *machine)
     DeviceState *dev;
     int i;
     qemu_irq irq;
+    BusState *bus;
+    DriveInfo *dinfo;
 
     s->revision_data[0] = 0x00030001; /* pboard version */
 
@@ -299,9 +302,28 @@ static void xrcomputer_init(MachineState *machine)
     s->amtsu = BUS(AMTSU_BRIDGE(dev)->bus);
 
     /* initialize disk */
-    sysbus_create_simple(TYPE_XRARCH_DISK_CTRL,
+    dev = sysbus_create_simple(TYPE_XRARCH_DISK_CTRL,
         xrcomputer_memmap[XRCOMPUTER_DISK].base,
         qdev_get_gpio_in(s->irqchip, DISK_IRQ));
+    bus = BUS(&XRARCH_DISK_CTRL(dev)->bus);
+
+    for (i = 0; i < XRARCH_MAX_DISK; i++) {
+        dinfo = drive_get(IF_XRDISK, 0, i);
+
+        if (!dinfo) {
+            continue;
+        }
+
+        dev = qdev_new(TYPE_XRARCH_DISK);
+        XRARCH_DISK(dev)->unit = i;
+
+        qdev_prop_set_drive_err(dev, "drive", blk_by_legacy_dinfo(dinfo),
+            &error_fatal);
+
+        if (!qdev_realize_and_unref(dev, bus, &error_fatal)) {
+            return;
+        }
+    }
 
     if (!s->headless) {
         /* add kinnowfb */
@@ -433,6 +455,7 @@ static void xrcomputer_class_init(ObjectClass *oc, const void *data)
     mc->max_cpus = XRCOMPUTER_CPUS_MAX;
     mc->is_default = true;
     mc->default_cpu_type = TYPE_XR17032_CPU_BASE;
+    mc->block_default_type = IF_XRDISK;
     mc->no_parallel = 1;
     mc->no_floppy = 1;
     mc->no_cdrom = 1;
