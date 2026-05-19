@@ -11,6 +11,7 @@
 #include "qemu/timer.h"
 #include "system/system.h"
 #include "migration/vmstate.h"
+#include "hw/rtc/xrarch_rtc.h"
 
 #define SYS_RTCCMD 0x00
 #define SYS_RTCDATA 0x04
@@ -20,23 +21,6 @@
 #define CMD_GET_MILLIS 3
 #define CMD_SET_SECONDS 4
 #define CMD_SET_MILLIS 5
-
-#define TYPE_XRARCH_RTC "xrarch.rtc"
-OBJECT_DECLARE_SIMPLE_TYPE(XRarchRtcState, XRARCH_RTC)
-
-struct XRarchRtcState {
-    SysBusDevice parent_obj;
-
-    MemoryRegion iomem;
-
-    uint32_t data;
-    uint32_t interval;
-    int64_t offset_rtc;
-
-    int64_t last_time;
-    QEMUTimer *timer;
-    qemu_irq irq;
-};
 
 static void xrarch_rtc_update(XRarchRtcState *s)
 {

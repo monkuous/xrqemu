@@ -33,6 +33,8 @@
 #include "hw/xr17032/virt.h"
 #include "hw/xr17032/boot.h"
 #include "hw/intc/xrarch_lsic.h"
+#include "hw/rtc/xrarch_rtc.h"
+#include "hw/virtio/virtio-mmio.h"
 #include "hw/core/platform-bus.h"
 #include "system/device_tree.h"
 #include "system/system.h"
@@ -657,7 +659,7 @@ static void virt_machine_init(MachineState *machine)
     s->irqchip = virt_create_lsic(s->memmap, machine->smp.cpus);
 
     /* Initialize rtc */
-    sysbus_create_simple("xrarch.rtc", s->memmap[VIRT_RTC].base,
+    sysbus_create_simple(TYPE_XRARCH_RTC, s->memmap[VIRT_RTC].base,
         qdev_get_gpio_in(s->irqchip, RTC_IRQ));
 
     /* register system main memory (actual RAM) */
@@ -679,7 +681,7 @@ static void virt_machine_init(MachineState *machine)
 
     /* VirtIO MMIO devices */
     for (i = 0; i < VIRTIO_COUNT; i++) {
-        sysbus_create_simple("virtio-mmio",
+        sysbus_create_simple(TYPE_VIRTIO_MMIO,
             s->memmap[VIRT_VIRTIO].base + i * s->memmap[VIRT_VIRTIO].size,
             qdev_get_gpio_in(s->irqchip, VIRTIO_IRQ + i));
     }

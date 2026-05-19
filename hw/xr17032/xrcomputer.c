@@ -24,11 +24,13 @@
 #include "target/xr17032/cpu.h"
 #include "hw/xr17032/xrcomputer.h"
 #include "hw/intc/xrarch_lsic.h"
+#include "hw/rtc/xrarch_rtc.h"
+#include "hw/char/xrarch_uart.h"
+#include "hw/input/amtsu.h"
 #include "system/system.h"
 #include "system/reset.h"
 #include "qemu/datadir.h"
 #include "hw/core/qdev-properties.h"
-#include "hw/input/amtsu.h"
 
 #define XRCOMPUTER_CPUS_MAX 4
 
@@ -217,7 +219,7 @@ static const MemoryRegionOps revision_ops = {
 
 static void create_serial(DeviceState *irqchip, int memmap, int irq, int id)
 {
-    DeviceState *dev = qdev_new("xrarch.uart");
+    DeviceState *dev = qdev_new(TYPE_XRARCH_UART);
 
     qdev_prop_set_chr(dev, "chardev", serial_hd(id));
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
@@ -269,7 +271,7 @@ static void xrcomputer_init(MachineState *machine)
         machine->smp.cpus);
 
     /* initialize rtc */
-    sysbus_create_simple("xrarch.rtc", xrcomputer_memmap[XRCOMPUTER_RTC].base,
+    sysbus_create_simple(TYPE_XRARCH_RTC, xrcomputer_memmap[XRCOMPUTER_RTC].base,
         qdev_get_gpio_in(irqchip, RTC_IRQ));
 
     /* initialize serial ports */
