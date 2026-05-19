@@ -20,6 +20,7 @@ xr17032_system_ss.add(files(
   'cr.c',
   'xr17032-qmp-cmds.c',
   'machine.c',
+  'monitor.c',
 ))
 
 subdir('tcg')
