@@ -135,7 +135,10 @@ static void xr17032_cpu_do_interrupt(CPUState *cs)
         env->CR_RS = push_stack(env->CR_RS);
     }
 
-    env->CR_RS = FIELD_DP32(env->CR_RS, CR_RS, ECAUSE, cause);
+    if (cause != EXCCODE_ITB && cause != EXCCODE_DTB) {
+        env->CR_RS = FIELD_DP32(env->CR_RS, CR_RS, ECAUSE, cause);
+    }
+
     env->CR_RS = FIELD_DP32(env->CR_RS, CR_RS, U, 0);
     env->CR_RS = FIELD_DP32(env->CR_RS, CR_RS, I, 0);
 
@@ -147,7 +150,7 @@ static void xr17032_cpu_do_interrupt(CPUState *cs)
                      __func__, env->pc, env->CR_EPC, env->CR_TBPC, env->CR_RS,
                      cause);
 
-    if  (cause == EXCCODE_INT) {
+    if (cause == EXCCODE_INT) {
         qemu_plugin_vcpu_interrupt_cb(cs, last_pc);
     } else {
         qemu_plugin_vcpu_exception_cb(cs, last_pc);
