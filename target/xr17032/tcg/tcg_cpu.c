@@ -87,10 +87,10 @@ static void xr17032_cpu_do_interrupt(CPUState *cs)
     }
 
     if (env->CR_EB == 0) {
-        cpu_interrupt(cs, CPU_INTERRUPT_RESET);
-
         if (XR17032_CPU(cs)->pause_on_crash) {
             vm_stop(RUN_STATE_PAUSED);
+        } else {
+            cpu_interrupt(cs, CPU_INTERRUPT_RESET);
         }
 
         return;
