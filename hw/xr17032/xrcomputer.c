@@ -32,6 +32,7 @@
 #include "system/reset.h"
 #include "qemu/datadir.h"
 #include "hw/core/qdev-properties.h"
+#include "hw/misc/ebus.h"
 
 #define XRCOMPUTER_CPUS_MAX 4
 
@@ -47,13 +48,13 @@
 
 enum {
     XRCOMPUTER_DRAM,
-    XRCOMPUTER_BOARD,
+    XRCOMPUTER_EBUS,
     XRCOMPUTER_UART0,
     XRCOMPUTER_UART1,
     XRCOMPUTER_DISK,
     XRCOMPUTER_RTC,
     XRCOMPUTER_AMTSU,
-    XRCOMPUTER_REV,
+    XRCOMPUTER_BOARD,
     XRCOMPUTER_NVRAM,
     XRCOMPUTER_LSIC,
     XRCOMPUTER_RESET,
@@ -65,7 +66,7 @@ enum {
     DISK_IRQ = 3,
     UART0_IRQ = 4,
     UART1_IRQ = 5,
-    BOARD_IRQ = 0x28, /* 0x28-0x2e */
+    EBUS_IRQ = 0x28, /* 0x28-0x2e */
     AMTSU_IRQ = 0x30, /* 0x30-0x33 */
 };
 
@@ -77,13 +78,13 @@ enum {
 
 static const MemMapEntry xrcomputer_memmap[] = {
     [XRCOMPUTER_DRAM] =  {        0x0,        0x0 },
-    [XRCOMPUTER_BOARD] = { 0xc0000000,  0x8000000 },
+    [XRCOMPUTER_EBUS] =  { 0xc0000000, EBUS_APERTURE },
     [XRCOMPUTER_UART0] = { 0xf8000040,        0x8 },
     [XRCOMPUTER_UART1] = { 0xf8000048,        0x8 },
     [XRCOMPUTER_DISK] =  { 0xf8000064,        0xc },
     [XRCOMPUTER_RTC] =   { 0xf8000080,        0x8 },
     [XRCOMPUTER_AMTSU] = { 0xf80000c0,       0x14 },
-    [XRCOMPUTER_REV] =   { 0xf8000800,       0x80 },
+    [XRCOMPUTER_BOARD] = { 0xf8000800,       0x80 },
     [XRCOMPUTER_NVRAM] = { 0xf8001000,     0x1000 },
     [XRCOMPUTER_LSIC] =  { 0xf8030000, LSIC_SPACE },
     [XRCOMPUTER_RESET] = { 0xf8800000,        0x4 },
@@ -191,14 +192,14 @@ static const MemoryRegionOps reset_ops = {
     }
 };
 
-static uint64_t revision_read(void *opaque, hwaddr addr, unsigned size)
+static uint64_t board_read(void *opaque, hwaddr addr, unsigned size)
 {
     XRcomputerState *s = opaque;
 
     return s->revision_data[addr / 4];
 }
 
-static void revision_write(void *opaque, hwaddr addr, uint64_t value,
+static void board_write(void *opaque, hwaddr addr, uint64_t value,
         unsigned size)
 {
     XRcomputerState *s = opaque;
@@ -208,9 +209,9 @@ static void revision_write(void *opaque, hwaddr addr, uint64_t value,
     }
 }
 
-static const MemoryRegionOps revision_ops = {
-    .read = revision_read,
-    .write = revision_write,
+static const MemoryRegionOps board_ops = {
+    .read = board_read,
+    .write = board_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
     .valid = {
         .min_access_size = 4,
@@ -234,7 +235,6 @@ static void xrcomputer_init(MachineState *machine)
     XRcomputerState *s = XRCOMPUTER_MACHINE(machine);
     MemoryRegion *system_memory = get_system_memory();
     DeviceState *dev;
-    DeviceState *irqchip;
     int i;
     qemu_irq irq;
 
@@ -258,26 +258,26 @@ static void xrcomputer_init(MachineState *machine)
     }
 
     /* initialize platform mmio */
-    memory_region_init_io(&s->reset, NULL, &reset_ops, s, "xrcomputer.reset",
-        xrcomputer_memmap[XRCOMPUTER_RESET].size);
+    memory_region_init_io(&s->reset_mmio, NULL, &reset_ops, s,
+        "xrcomputer.reset", xrcomputer_memmap[XRCOMPUTER_RESET].size);
     memory_region_add_subregion(system_memory,
-        xrcomputer_memmap[XRCOMPUTER_RESET].base, &s->reset);
-    memory_region_init_io(&s->revision, NULL, &revision_ops, s, "xrcomputer.revision",
-        xrcomputer_memmap[XRCOMPUTER_REV].size);
+        xrcomputer_memmap[XRCOMPUTER_RESET].base, &s->reset_mmio);
+    memory_region_init_io(&s->board_mmio, NULL, &board_ops, s,
+        "xrcomputer.board", xrcomputer_memmap[XRCOMPUTER_BOARD].size);
     memory_region_add_subregion(system_memory,
-        xrcomputer_memmap[XRCOMPUTER_REV].base, &s->revision);
+        xrcomputer_memmap[XRCOMPUTER_BOARD].base, &s->board_mmio);
 
     /* initialize irqchip */
-    irqchip = xrarch_lsic_create(xrcomputer_memmap[XRCOMPUTER_LSIC].base,
+    s->irqchip = xrarch_lsic_create(xrcomputer_memmap[XRCOMPUTER_LSIC].base,
         machine->smp.cpus);
 
     /* initialize rtc */
     sysbus_create_simple(TYPE_XRARCH_RTC, xrcomputer_memmap[XRCOMPUTER_RTC].base,
-        qdev_get_gpio_in(irqchip, RTC_IRQ));
+        qdev_get_gpio_in(s->irqchip, RTC_IRQ));
 
     /* initialize serial ports */
-    create_serial(irqchip, XRCOMPUTER_UART0, UART0_IRQ, 0);
-    create_serial(irqchip, XRCOMPUTER_UART1, UART1_IRQ, 1);
+    create_serial(s->irqchip, XRCOMPUTER_UART0, UART0_IRQ, 0);
+    create_serial(s->irqchip, XRCOMPUTER_UART1, UART1_IRQ, 1);
 
     /* initialize nvram */
     pflash_cfi01_legacy_drive(s->nvram,
@@ -294,10 +294,10 @@ static void xrcomputer_init(MachineState *machine)
     /* initialize disk */
     sysbus_create_simple(TYPE_XRARCH_DISK_CTRL,
         xrcomputer_memmap[XRCOMPUTER_DISK].base,
-        qdev_get_gpio_in(irqchip, DISK_IRQ));
+        qdev_get_gpio_in(s->irqchip, DISK_IRQ));
 
     for (i = 0; i < 4; i++) {
-        irq = qdev_get_gpio_in(irqchip, AMTSU_IRQ + i);
+        irq = qdev_get_gpio_in(s->irqchip, AMTSU_IRQ + i);
         sysbus_connect_irq(SYS_BUS_DEVICE(dev), i, irq);
     }
 
@@ -354,9 +354,55 @@ static CpuInstanceProperties xrcomputer_cpu_index_to_props(MachineState *ms,
     return possible_cpus->cpus[cpu_index].props;
 }
 
+static HotplugHandler *xrcomputer_get_hotplug_handler(MachineState *machine,
+    DeviceState *dev)
+{
+    MachineClass *mc = MACHINE_GET_CLASS(machine);
+
+    if (device_is_dynamic_sysbus(mc, dev)) {
+        return HOTPLUG_HANDLER(machine);
+    }
+
+    return NULL;
+}
+
+static void xrcomputer_device_plug_cb(HotplugHandler *hotplug_dev,
+    DeviceState *dev, Error **errp)
+{
+    XRcomputerState *s = XRCOMPUTER_MACHINE(hotplug_dev);
+    MachineClass *mc = MACHINE_GET_CLASS(s);
+    SysBusDevice *sbd;
+
+    if (device_is_dynamic_sysbus(mc, dev)) {
+        for (int i = 0; i < XRCOMPUTER_EBUS_COUNT; i++) {
+            if (s->ebus[i] == NULL) {
+                s->ebus[i] = dev;
+
+                sbd = SYS_BUS_DEVICE(dev);
+
+                if (sysbus_has_irq(sbd, 0)) {
+                    sysbus_connect_irq(sbd, 0,
+                        qdev_get_gpio_in(s->irqchip, EBUS_IRQ + i));
+                }
+
+                if (sysbus_has_mmio(sbd, 0)) {
+                    sysbus_mmio_map(sbd, 0,
+                        xrcomputer_memmap[XRCOMPUTER_EBUS].base
+                            + xrcomputer_memmap[XRCOMPUTER_EBUS].size * i);
+                }
+
+                return;
+            }
+        }
+
+        error_setg(errp, "XRcomputer: not enough EBus slots\n");
+    }
+}
+
 static void xrcomputer_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
+    HotplugHandlerClass *hc = HOTPLUG_HANDLER_CLASS(oc);
 
     mc->desc = "XR/computer board";
     mc->init = xrcomputer_init;
@@ -370,6 +416,11 @@ static void xrcomputer_class_init(ObjectClass *oc, const void *data)
     mc->cpu_index_to_instance_props = xrcomputer_cpu_index_to_props;
     mc->default_ram_id = "xrcomputer.ram";
     assert(!mc->get_hotplug_handler);
+    mc->get_hotplug_handler = xrcomputer_get_hotplug_handler;
+
+    hc->plug = xrcomputer_device_plug_cb;
+
+    machine_class_allow_dynamic_sysbus_dev(mc, TYPE_EBUS_DEVICE);
 }
 
 static const TypeInfo xrcomputer_typeinfo = {
@@ -379,7 +430,8 @@ static const TypeInfo xrcomputer_typeinfo = {
     .instance_init = xrcomputer_instance_init,
     .instance_size = sizeof(XRcomputerState),
     .interfaces = (const InterfaceInfo[]) {
-         { }
+        { TYPE_HOTPLUG_HANDLER },
+        { }
     },
 };
 

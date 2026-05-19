@@ -25,3 +25,5 @@ config XRCOMPUTER
     select PFLASH_CFI01
     select AMTSU
     select XRARCH_DISK
+    select EBUS
+    imply KINNOWFB

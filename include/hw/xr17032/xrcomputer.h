@@ -22,6 +22,8 @@
 #include "hw/core/boards.h"
 #include "hw/block/flash.h"
 
+#define XRCOMPUTER_EBUS_COUNT 7
+
 #define TYPE_XRCOMPUTER_MACHINE MACHINE_TYPE_NAME("xrcomputer")
 typedef struct XRcomputerState XRcomputerState;
 DECLARE_INSTANCE_CHECKER(XRcomputerState, XRCOMPUTER_MACHINE,
@@ -32,9 +34,12 @@ struct XRcomputerState {
     MachineState parent;
     PFlashCFI01 *nvram;
     MemoryRegion fw_rom;
-    MemoryRegion reset;
-    MemoryRegion revision;
+    MemoryRegion reset_mmio;
+    MemoryRegion board_mmio;
     uint32_t revision_data[32];
+
+    DeviceState *irqchip;
+    DeviceState *ebus[XRCOMPUTER_EBUS_COUNT];
 
     /*< public >*/
     Notifier machine_done;

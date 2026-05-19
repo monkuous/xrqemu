@@ -140,5 +140,6 @@ if config_all_devices.has_key('CONFIG_VIRTIO_VGA')
 endif
 
 system_ss.add(when: 'CONFIG_OMAP', if_true: files('omap_lcdc.c'))
+system_ss.add(when: 'CONFIG_KINNOWFB', if_true: files('kinnowfb.c'))
 
 modules += { 'hw-display': hw_display_modules }
