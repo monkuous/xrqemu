@@ -23,3 +23,4 @@ config XRCOMPUTER
     select XRARCH_RTC
     select XRARCH_UART
     select PFLASH_CFI01
+    select AMTSU

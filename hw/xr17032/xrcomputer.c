@@ -28,6 +28,7 @@
 #include "system/reset.h"
 #include "qemu/datadir.h"
 #include "hw/core/qdev-properties.h"
+#include "hw/input/amtsu.h"
 
 #define XRCOMPUTER_CPUS_MAX 4
 
@@ -78,7 +79,7 @@ static const MemMapEntry xrcomputer_memmap[] = {
     [XRCOMPUTER_UART1] = { 0xf8000048,        0x8 },
     [XRCOMPUTER_DISK] =  { 0xf8000064,        0xc },
     [XRCOMPUTER_RTC] =   { 0xf8000080,        0x8 },
-    [XRCOMPUTER_AMTSU] = { 0xf80000c0,       0x10 },
+    [XRCOMPUTER_AMTSU] = { 0xf80000c0,       0x14 },
     [XRCOMPUTER_REV] =   { 0xf8000800,       0x80 },
     [XRCOMPUTER_NVRAM] = { 0xf8001000,     0x1000 },
     [XRCOMPUTER_LSIC] =  { 0xf8030000, LSIC_SPACE },
@@ -229,9 +230,10 @@ static void xrcomputer_init(MachineState *machine)
 {
     XRcomputerState *s = XRCOMPUTER_MACHINE(machine);
     MemoryRegion *system_memory = get_system_memory();
-    DeviceState *cpu;
+    DeviceState *dev;
     DeviceState *irqchip;
     int i;
+    qemu_irq irq;
 
     s->revision_data[0] = 0x00030001; /* pboard version */
 
@@ -242,12 +244,12 @@ static void xrcomputer_init(MachineState *machine)
 
     /* initialize cpus */
     for (i = 0; i < machine->smp.cpus; i++) {
-        cpu = qdev_new(machine->cpu_type);
+        dev = qdev_new(machine->cpu_type);
 
-        XR17032_CPU(cpu)->phy_id = i;
-        qemu_register_reset(xr17032_cpus_reset, cpu);
+        XR17032_CPU(dev)->phy_id = i;
+        qemu_register_reset(xr17032_cpus_reset, dev);
 
-        if (!qdev_realize_and_unref(cpu, NULL, &error_fatal)) {
+        if (!qdev_realize_and_unref(dev, NULL, &error_fatal)) {
             return;
         }
     }
@@ -279,6 +281,17 @@ static void xrcomputer_init(MachineState *machine)
         drive_get(IF_PFLASH, 0, 0));
     xrcomputer_nvram_map1(s->nvram, xrcomputer_memmap[XRCOMPUTER_NVRAM].base,
         xrcomputer_memmap[XRCOMPUTER_NVRAM].size, system_memory);
+
+    /* initialize amtsu */
+    dev = qdev_new(TYPE_AMTSU_BRIDGE);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
+    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0,
+        xrcomputer_memmap[XRCOMPUTER_AMTSU].base);
+
+    for (i = 0; i < 4; i++) {
+        irq = qdev_get_gpio_in(irqchip, AMTSU_IRQ + i);
+        sysbus_connect_irq(SYS_BUS_DEVICE(dev), i, irq);
+    }
 
     /* register system main memory (actual RAM) */
     memory_region_add_subregion(system_memory,
