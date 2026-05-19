@@ -100,7 +100,7 @@ static const MemoryRegionOps xrarch_rtc_ops = {
     .write_with_attrs = xrarch_rtc_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
     .valid = {
-        .min_access_size = 4,
+        .min_access_size = 1,
         .max_access_size = 4,
     },
 };

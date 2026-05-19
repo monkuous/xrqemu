@@ -371,7 +371,7 @@ static const MemoryRegionOps amtsu_bridge_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
     .valid.max_access_size = 4,
     .impl.max_access_size = 4,
-    .impl.min_access_size = 4,
+    .impl.min_access_size = 1,
 };
 
 static void amtsu_bridge_reset(DeviceState *dev)

@@ -254,10 +254,6 @@ static MemTxResult kinnowfb_ctrl_read(void *opaque, hwaddr addr,
         return MEMTX_ERROR;
     }
 
-    if (size != 4) {
-        return MEMTX_ERROR;
-    }
-
     if (addr >= 0x3000 && addr < 0x3100) {
         *value = s->control[(addr - 0x3000) / 4];
         return MEMTX_OK;
@@ -271,7 +267,7 @@ static MemTxResult kinnowfb_ctrl_write(void *opaque, hwaddr addr, uint64_t value
 {
     KinnowfbState *s = opaque;
 
-    if ((addr & (size - 1)) != 0 || size != 4) {
+    if ((addr & (size - 1)) != 0) {
         return MEMTX_ERROR;
     }
 
@@ -294,7 +290,7 @@ static const MemoryRegionOps kinnowfb_ctrl_ops = {
     .write_with_attrs = kinnowfb_ctrl_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
     .impl.min_access_size = 1,
-    .impl.max_access_size = 8,
+    .impl.max_access_size = 4,
 };
 
 static const GraphicHwOps kinnowfb_ops = {

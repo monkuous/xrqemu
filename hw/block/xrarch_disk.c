@@ -303,7 +303,7 @@ static const MemoryRegionOps xrarch_disk_ctrl_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
     .valid.max_access_size = 4,
     .impl.max_access_size = 4,
-    .impl.min_access_size = 4,
+    .impl.min_access_size = 1,
 };
 
 static void xrarch_disk_ctrl_reset(DeviceState *d)
