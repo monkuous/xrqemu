@@ -41,6 +41,8 @@ struct XRcomputerState {
     DeviceState *irqchip;
     DeviceState *ebus[XRCOMPUTER_EBUS_COUNT];
 
+    bool headless;
+
     /*< public >*/
     Notifier machine_done;
 };

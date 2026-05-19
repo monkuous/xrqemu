@@ -291,14 +291,20 @@ static void xrcomputer_init(MachineState *machine)
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0,
         xrcomputer_memmap[XRCOMPUTER_AMTSU].base);
 
+    for (i = 0; i < 4; i++) {
+        irq = qdev_get_gpio_in(s->irqchip, AMTSU_IRQ + i);
+        sysbus_connect_irq(SYS_BUS_DEVICE(dev), i, irq);
+    }
+
     /* initialize disk */
     sysbus_create_simple(TYPE_XRARCH_DISK_CTRL,
         xrcomputer_memmap[XRCOMPUTER_DISK].base,
         qdev_get_gpio_in(s->irqchip, DISK_IRQ));
 
-    for (i = 0; i < 4; i++) {
-        irq = qdev_get_gpio_in(s->irqchip, AMTSU_IRQ + i);
-        sysbus_connect_irq(SYS_BUS_DEVICE(dev), i, irq);
+    if (!s->headless) {
+        /* add kinnowfb */
+        dev = qdev_new("kinnowfb");
+        sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     }
 
     /* register system main memory (actual RAM) */
@@ -399,6 +405,18 @@ static void xrcomputer_device_plug_cb(HotplugHandler *hotplug_dev,
     }
 }
 
+static bool xrcomputer_get_headless(Object *obj, Error **errp)
+{
+    XRcomputerState *s = XRCOMPUTER_MACHINE(obj);
+    return s->headless;
+}
+
+static void xrcomputer_set_headless(Object *obj, bool headless, Error **errp)
+{
+    XRcomputerState *s = XRCOMPUTER_MACHINE(obj);
+    s->headless = headless;
+}
+
 static void xrcomputer_class_init(ObjectClass *oc, const void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -421,6 +439,9 @@ static void xrcomputer_class_init(ObjectClass *oc, const void *data)
     hc->plug = xrcomputer_device_plug_cb;
 
     machine_class_allow_dynamic_sysbus_dev(mc, TYPE_EBUS_DEVICE);
+
+    object_class_property_add_bool(oc, "headless", xrcomputer_get_headless,
+        xrcomputer_set_headless);
 }
 
 static const TypeInfo xrcomputer_typeinfo = {
