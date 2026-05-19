@@ -20,7 +20,6 @@
 #define HW_XR17032_XRCOMPUTER_H
 
 #include "hw/core/boards.h"
-#include "hw/block/flash.h"
 
 #define XRCOMPUTER_EBUS_COUNT 7
 
@@ -32,7 +31,6 @@ DECLARE_INSTANCE_CHECKER(XRcomputerState, XRCOMPUTER_MACHINE,
 struct XRcomputerState {
     /*< private >*/
     MachineState parent;
-    PFlashCFI01 *nvram;
     MemoryRegion fw_rom;
     MemoryRegion reset_mmio;
     MemoryRegion board_mmio;
