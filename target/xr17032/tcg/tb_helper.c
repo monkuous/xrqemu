@@ -179,12 +179,13 @@ static XR17032TB *xr17032_tb_search_cb(CPUXR17032State *env,
     for (i = 0; i < XR17032_TB_MAX; ++i) {
         tb = insn ? &env->itb[i] : &env->dtb[i];
         tb_asid = FIELD_EX32(tb->tb_tag, CR_TBTAG, ASID);
+
         if (tb_asid != CR_TBTAG_ASID_INVALID) {
             tb_vpn = FIELD_EX32(tb->tb_tag, CR_TBTAG, VFN);
             tb_g = FIELD_EX32(tb->tb_pte, CR_TBPTE, G);
             vpn = (vaddr & TARGET_VIRT_MASK) >> TARGET_PAGE_BITS;
-            if (func(tb_g, cr_asid, tb_asid) &&
-                (vpn == (tb_vpn >> TARGET_PAGE_BITS))) {
+
+            if (vpn == tb_vpn && func(tb_g, cr_asid, tb_asid)) {
                 return tb;
             }
         }
