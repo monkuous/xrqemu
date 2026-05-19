@@ -251,6 +251,7 @@ static int64_t xr17032_cpu_get_arch_id(CPUState *cs)
 static const Property xr17032_cpu_properties[] = {
     DEFINE_PROP_INT32("socket-id", XR17032CPU, socket_id, 0),
     DEFINE_PROP_INT32("node-id", XR17032CPU, node_id, CPU_UNSET_NUMA_NODE_ID),
+    DEFINE_PROP_BOOL("pause-on-crash", XR17032CPU, pause_on_crash, false),
 };
 
 static const gchar *xr17032_gdb_arch_name(CPUState *cs)

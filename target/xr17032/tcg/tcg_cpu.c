@@ -16,6 +16,7 @@
 #include "exec/target_page.h"
 #include "tcg_xr17032.h"
 #include "internals.h"
+#include "system/runstate.h"
 
 struct TypeExcp {
     int32_t exccode;
@@ -87,6 +88,11 @@ static void xr17032_cpu_do_interrupt(CPUState *cs)
 
     if (env->CR_EB == 0) {
         cpu_interrupt(cs, CPU_INTERRUPT_RESET);
+
+        if (XR17032_CPU(cs)->pause_on_crash) {
+            vm_stop(RUN_STATE_PAUSED);
+        }
+
         return;
     }
 

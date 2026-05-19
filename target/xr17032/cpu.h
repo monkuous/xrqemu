@@ -113,6 +113,7 @@ struct ArchCPU {
     uint32_t  phy_id;
     int32_t socket_id;  /* socket-id of this CPU */
     int32_t node_id;    /* NUMA node of this CPU */
+    bool pause_on_crash;
 
     /* 'compatible' string for this CPU for Linux device trees */
     const char *dtb_compatible;
