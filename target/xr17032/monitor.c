@@ -63,7 +63,7 @@ void hmp_info_tlb(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    monitor_printf(mon, "xTB[ IDX]: ASID[  VFN] -> PFN FLAGS (RAW)\n");
+    monitor_printf(mon, "xTB[ IDX]: ASID[  VFN] -> PFN   FLAGS (     RAW)\n");
     dump_tb(mon, env->itb, "ITB");
     dump_tb(mon, env->dtb, "DTB");
 }
