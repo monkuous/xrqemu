@@ -68,7 +68,7 @@ enum {
     UART0_IRQ = 4,
     UART1_IRQ = 5,
     EBUS_IRQ = 0x28, /* 0x28-0x2e */
-    AMTSU_IRQ = 0x30, /* 0x30-0x33 */
+    AMTSU_IRQ = 0x31, /* 0x31-0x34 */
 };
 
 #define LSIC_SPACE 0x100000
