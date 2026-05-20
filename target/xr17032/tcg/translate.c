@@ -564,6 +564,8 @@ void xr17032_cr_translate_init(void)
     SET_CR_FUNC(DTBINDEX, NULL, gen_helper_crwr_dtbindex);
     SET_CR_FUNC(ITBCTRL, NULL, gen_helper_crwr_itbctrl);
     SET_CR_FUNC(DTBCTRL, NULL, gen_helper_crwr_dtbctrl);
+    SET_CR_FUNC(ITBTAG, NULL, gen_helper_crwr_itbtag);
+    SET_CR_FUNC(DTBTAG, NULL, gen_helper_crwr_dtbtag);
 }
 #undef SET_CR_FUNC
 

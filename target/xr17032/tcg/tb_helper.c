@@ -334,6 +334,30 @@ void helper_crwr_dtbctrl(CPUXR17032State *env, target_ulong value)
     tbctrl(env, value, false);
 }
 
+void helper_crwr_itbtag(CPUXR17032State *env, target_ulong value)
+{
+    int old_asid = FIELD_EX32(env->CR_ITBTAG, CR_TBTAG, ASID);
+    int new_asid = FIELD_EX32(value, CR_TBTAG, ASID);
+
+    env->CR_ITBTAG = value;
+
+    if (old_asid != new_asid) {
+        tlb_flush_by_mmuidx(env_cpu(env), tlb_map(true));
+    }
+}
+
+void helper_crwr_dtbtag(CPUXR17032State *env, target_ulong value)
+{
+    int old_asid = FIELD_EX32(env->CR_DTBTAG, CR_TBTAG, ASID);
+    int new_asid = FIELD_EX32(value, CR_TBTAG, ASID);
+
+    env->CR_DTBTAG = value;
+
+    if (old_asid != new_asid) {
+        tlb_flush_by_mmuidx(env_cpu(env), tlb_map(false));
+    }
+}
+
 bool xr17032_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                           MMUAccessType access_type, int mmu_idx,
                           bool probe, uintptr_t retaddr)

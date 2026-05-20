@@ -13,6 +13,8 @@ DEF_HELPER_2(crwr_itbindex, void, env, tl)
 DEF_HELPER_2(crwr_dtbindex, void, env, tl)
 DEF_HELPER_2(crwr_itbctrl, void, env, tl)
 DEF_HELPER_2(crwr_dtbctrl, void, env, tl)
+DEF_HELPER_2(crwr_itbtag, void, env, tl)
+DEF_HELPER_2(crwr_dtbtag, void, env, tl)
 
 DEF_HELPER_1(rfe, void, env)
 DEF_HELPER_1(hlt, void, env)
