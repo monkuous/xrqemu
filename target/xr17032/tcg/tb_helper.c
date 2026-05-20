@@ -296,7 +296,7 @@ static void tbctrl_all(CPUXR17032State *env, bool insn, int start)
 {
     XR17032TB *tb = insn ? env->itb : env->dtb;
 
-    for (int i = 0; i < XR17032_TB_MAX; i++) {
+    for (int i = start; i < XR17032_TB_MAX; i++) {
         tb[i].tb_tag = FIELD_DP32(tb[i].tb_tag, CR_TBTAG, ASID,
                                   CR_TBTAG_ASID_INVALID);
     }
