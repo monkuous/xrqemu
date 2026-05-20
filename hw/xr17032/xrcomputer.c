@@ -295,6 +295,10 @@ static void xrcomputer_init(MachineState *machine)
         /* add keyboard */
         dev = qdev_new(TYPE_AMTSU_KBD);
         qdev_realize_and_unref(dev, s->amtsu, &error_fatal);
+
+        /* add mouse */
+        dev = qdev_new(TYPE_AMTSU_MOUSE);
+        qdev_realize_and_unref(dev, s->amtsu, &error_fatal);
     }
 
     /* register system main memory (actual RAM) */

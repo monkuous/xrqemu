@@ -107,4 +107,20 @@ struct AmtsuKeyboard {
 #define TYPE_AMTSU_KBD "amtsu-kbd"
 OBJECT_DECLARE_SIMPLE_TYPE(AmtsuKeyboard, AMTSU_KBD)
 
+struct AmtsuMouse {
+    /*< private >*/
+    AmtsuDevice parent_obj;
+
+    uint32_t pressed;
+    uint32_t released;
+    uint32_t buttons;
+    int16_t dx;
+    int16_t dy;
+
+    /*< public >*/
+};
+
+#define TYPE_AMTSU_MOUSE "amtsu-mouse"
+OBJECT_DECLARE_SIMPLE_TYPE(AmtsuMouse, AMTSU_MOUSE)
+
 #endif

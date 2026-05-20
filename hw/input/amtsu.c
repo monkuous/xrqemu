@@ -53,8 +53,22 @@ static void amtsu_device_realize(DeviceState *dev, Error **errp)
     AmtsuDeviceClass *dc = AMTSU_DEVICE_GET_CLASS(d);
     AmtsuBus *bus = AMTSU_BUS(qdev_get_parent_bus(dev));
     Error *local_err = NULL;
+    int i;
 
-    if (d->id < 1 || d->id >= NUM_AMTSU_DEVICES) {
+    if (d->id < 0) {
+        for (i = 1; i < NUM_AMTSU_DEVICES; i++) {
+            if (bus->devices[i] == NULL) {
+                d->id = i;
+                break;
+            }
+        }
+
+        if (d->id < 0) {
+            error_setg(errp, "Amtsu: no slots available for %s",
+                object_get_typename(OBJECT(d)));
+            return;
+        }
+    } else if (d->id < 1 || d->id >= NUM_AMTSU_DEVICES) {
         error_setg(errp, "Amtsu: invalid ID %d for %s", d->id,
             object_get_typename(OBJECT(d)));
         return;
@@ -91,7 +105,7 @@ static void amtsu_device_unrealize(DeviceState *dev)
 }
 
 static const Property amtsu_device_props[] = {
-    DEFINE_PROP_INT32("addr", AmtsuDevice, id, 1),
+    DEFINE_PROP_INT32("addr", AmtsuDevice, id, -1),
 };
 
 const VMStateDescription vmstate_amtsu_device = {
@@ -556,8 +570,8 @@ static void amtsu_kbd_reset(AmtsuDevice *dev) {
 }
 
 static const QemuInputHandler amtsu_keyboard_handler = {
-    .name  = "QEMU Amtsu Keyboard",
-    .mask  = INPUT_EVENT_MASK_KEY,
+    .name = "QEMU Amtsu Keyboard",
+    .mask = INPUT_EVENT_MASK_KEY,
     .event = amtsu_keyboard_event,
 };
 
@@ -568,6 +582,10 @@ static void amtsu_kbd_realize(AmtsuDevice *dev, Error **errp)
 
 #define CMD_POP_SCANCODE 1
 #define CMD_CHECK_KEY 3
+
+#define EVT_PRESSED 1
+#define EVT_RELEASED 2
+#define EVT_MOVED 3
 
 static MemTxResult amtsu_kbd_cmd_write(struct AmtsuDevice *dev, uint32_t cmd)
 {
@@ -655,12 +673,180 @@ static const TypeInfo amtsu_kbd_info = {
     .instance_init = amtsu_kbd_instance_init,
 };
 
+static const int button_to_amtsu[INPUT_BUTTON__MAX] = {
+    [INPUT_BUTTON_LEFT] = 1 << 1,
+    [INPUT_BUTTON_MIDDLE] = 1 << 2,
+    [INPUT_BUTTON_RIGHT] = 1 << 3,
+};
+
+static inline int16_t truncate16(int64_t value)
+{
+    if (value < -0x8000) {
+        return -0x8000;
+    }
+
+    if (value > 0x7fff) {
+        return 0x7fff;
+    }
+
+    return value;
+}
+
+static void amtsu_mouse_event(DeviceState *dev, QemuConsole *src,
+    InputEvent *evt)
+{
+    AmtsuMouse *d = AMTSU_MOUSE(dev);
+    InputMoveEvent *move;
+    InputBtnEvent *btn;
+
+    switch (evt->type) {
+    case INPUT_EVENT_KIND_REL:
+        move = evt->u.rel.data;
+
+        if (move->axis == INPUT_AXIS_X) {
+            d->dx = truncate16(d->dx + truncate16(move->value));
+        } else if (move->axis == INPUT_AXIS_Y) {
+            d->dy = truncate16(d->dy + truncate16(move->value));
+        }
+
+        break;
+    case INPUT_EVENT_KIND_BTN:
+        btn = evt->u.btn.data;
+
+        if (btn->down) {
+            d->pressed |= button_to_amtsu[btn->button];
+            d->buttons |= button_to_amtsu[btn->button];
+        } else {
+            d->released |= button_to_amtsu[btn->button];
+            d->buttons &= ~button_to_amtsu[btn->button];
+        }
+
+        break;
+    default:
+        break;
+    }
+}
+
+static void amtsu_mouse_sync(DeviceState *dev)
+{
+    AmtsuMouse *d = AMTSU_MOUSE(dev);
+
+    if (d->buttons) {
+        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
+    }
+
+    if (d->pressed || d->released || d->buttons || d->dx || d->dy) {
+        amtsu_raise_irq(AMTSU_DEVICE(d));
+    }
+}
+
+static void amtsu_mouse_reset(AmtsuDevice *dev) {
+    AmtsuMouse *d = AMTSU_MOUSE(dev);
+
+    d->pressed = 0;
+    d->released = 0;
+    d->buttons = 0;
+    d->dx = 0;
+    d->dy = 0;
+}
+
+static const QemuInputHandler amtsu_mouse_handler = {
+    .name = "QEMU Amtsu Mouse",
+    .mask = INPUT_EVENT_MASK_BTN | INPUT_EVENT_MASK_REL,
+    .event = amtsu_mouse_event,
+    .sync = amtsu_mouse_sync,
+};
+
+static void amtsu_mouse_realize(AmtsuDevice *dev, Error **errp)
+{
+    qemu_input_handler_register(DEVICE(dev), &amtsu_mouse_handler);
+}
+
+#define CMD_POP_EVENT 1
+
+static MemTxResult amtsu_mouse_cmd_write(struct AmtsuDevice *dev, uint32_t cmd)
+{
+    AmtsuMouse *d = AMTSU_MOUSE(dev);
+
+    switch (cmd) {
+    case CMD_POP_EVENT:
+        if (d->pressed) {
+            dev->dataA = EVT_PRESSED;
+            dev->dataB = ctz32(d->pressed);
+            d->pressed &= ~(1 << dev->dataB);
+        } else if (d->released) {
+            dev->dataA = EVT_RELEASED;
+            dev->dataB = ctz32(d->released);
+            d->released &= ~(1 << dev->dataB);
+        } else if (d->dx || d->dy) {
+            dev->dataA = EVT_MOVED;
+            dev->dataB = ((uint32_t)(uint16_t)d->dx << 16) | (uint16_t)d->dy;
+            d->dx = 0;
+            d->dy = 0;
+        } else {
+            dev->dataA = 0;
+        }
+
+        break;
+    case CMD_RESET:
+        amtsu_mouse_reset(dev);
+        break;
+    }
+
+    return MEMTX_OK;
+}
+
+static const VMStateDescription vmstate_amtsu_mouse = {
+    .name = "amtsu_mouse",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (const VMStateField[]) {
+        VMSTATE_STRUCT(parent_obj, AmtsuMouse, 0, vmstate_amtsu_device,
+                       AmtsuDevice),
+        VMSTATE_UINT32(pressed, AmtsuMouse),
+        VMSTATE_UINT32(released, AmtsuMouse),
+        VMSTATE_UINT32(buttons, AmtsuMouse),
+        VMSTATE_INT16(dx, AmtsuMouse),
+        VMSTATE_INT16(dy, AmtsuMouse),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static void amtsu_mouse_class_init(ObjectClass *klass, const void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+    AmtsuDeviceClass *adc = AMTSU_DEVICE_CLASS(klass);
+
+    adc->reset = amtsu_mouse_reset;
+    adc->realize = amtsu_mouse_realize;
+    adc->cmd_write = amtsu_mouse_cmd_write;
+    dc->vmsd = &vmstate_amtsu_mouse;
+
+    dc->hotpluggable = true;
+}
+
+static void amtsu_mouse_instance_init(Object *obj)
+{
+    AmtsuDevice *d = AMTSU_DEVICE(obj);
+
+    d->model = 0x4d4f5553;
+}
+
+static const TypeInfo amtsu_mouse_info = {
+    .name = TYPE_AMTSU_MOUSE,
+    .parent = TYPE_AMTSU_DEVICE,
+    .instance_size = sizeof(AmtsuMouse),
+    .class_init = amtsu_mouse_class_init,
+    .instance_init = amtsu_mouse_instance_init,
+};
+
 static void amtsu_register_types(void)
 {
     type_register_static(&amtsu_bus_info);
     type_register_static(&amtsu_device_info);
     type_register_static(&amtsu_bridge_info);
     type_register_static(&amtsu_kbd_info);
+    type_register_static(&amtsu_mouse_info);
 }
 
 type_init(amtsu_register_types)
