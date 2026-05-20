@@ -219,10 +219,10 @@ static void update_tb_index(CPUXR17032State *env, MMUContext *context,
 
     old = (insn ? env->itb : env->dtb) + index;
     fill_tb_entry(env, &new, context, insn);
-    /* Check whether ASID/VFN is the same */
+
     if (old->tb_tag == new.tb_tag) {
-        /* Check whether both even/odd pages is the same or invalid */
         tb_v = pte_present(env, old->tb_pte);
+
         if (!tb_v || new.tb_pte == old->tb_pte) {
             skip_inv = true;
         }
@@ -245,7 +245,7 @@ static void write_pte(CPUXR17032State *env, target_ulong pte, bool insn)
     update_tb_index(env, &context, index, insn);
 
     if (++index >= XR17032_TB_MAX) {
-        index = 4;
+        index = XR17032_TB_UNWIRED;
     }
 
     if (insn) {
