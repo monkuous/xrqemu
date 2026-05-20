@@ -97,11 +97,13 @@ static void xr17032_cpu_do_interrupt(CPUState *cs)
     }
 
     switch (cause) {
-    case EXCCODE_INT:
     case EXCCODE_SYS:
+    case EXCCODE_BRK:
+        last_pc += 4;
+        QEMU_FALLTHROUGH;
+    case EXCCODE_INT:
     case EXCCODE_BUS:
     case EXCCODE_NMI:
-    case EXCCODE_BRK:
     case EXCCODE_INV:
     case EXCCODE_PRV:
     case EXCCODE_UNA:
@@ -131,7 +133,7 @@ static void xr17032_cpu_do_interrupt(CPUState *cs)
     }
 
     if (!skip_push) {
-        env->CR_EPC = env->pc;
+        env->CR_EPC = last_pc;
         env->CR_RS = push_stack(env->CR_RS);
     }
 

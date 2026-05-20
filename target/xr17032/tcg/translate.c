@@ -48,7 +48,7 @@ static inline int shl_16(DisasContext *ctx, int x)
     return x << 16;
 }
 
-void generate_exception(DisasContext *ctx, int excp)
+static void generate_exception(DisasContext *ctx, int excp)
 {
     tcg_gen_movi_tl(cpu_pc, ctx->base.pc_next);
     gen_helper_raise_exception(tcg_env, tcg_constant_i32(excp));

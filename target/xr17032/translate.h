@@ -32,8 +32,6 @@ typedef struct DisasContext {
     TCGv zero;
 } DisasContext;
 
-void generate_exception(DisasContext *ctx, int excp);
-
 extern TCGv cpu_gpr[32], cpu_pc;
 
 #endif
