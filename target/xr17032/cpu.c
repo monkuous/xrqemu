@@ -70,7 +70,8 @@ bool xr17032_cpu_has_work(CPUState *cs)
 {
     bool has_work = false;
 
-    if (cpu_test_interrupt(cs, CPU_INTERRUPT_HARD)) {
+    if (FIELD_EX32(cpu_env(cs)->CR_RS, CR_RS, I)
+        && cpu_test_interrupt(cs, CPU_INTERRUPT_HARD)) {
         has_work = true;
     }
 
