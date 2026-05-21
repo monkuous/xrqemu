@@ -13,7 +13,7 @@
 
 typedef struct {
     disassemble_info *info;
-    uint64_t pc;
+    uint32_t pc;
     uint32_t insn;
 } DisasContext;
 
