@@ -173,6 +173,14 @@ static void xr17032_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
     do_raise_exception(env, EXCCODE_BUS, retaddr);
 }
 
+G_NORETURN static void xr17032_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+    MMUAccessType access_type, int mmu_idx, uintptr_t retaddr)
+{
+    CPUXR17032State *env = cpu_env(cs);
+    env->CR_EBADADDR = addr;
+    do_raise_exception(env, EXCCODE_UNA, retaddr);
+}
+
 static inline bool cpu_xr17032_hw_interrupts_enabled(CPUXR17032State *env)
 {
     return !!FIELD_EX32(env->CR_RS, CR_RS, I);
@@ -255,5 +263,6 @@ const TCGCPUOps xr17032_tcg_ops = {
     .cpu_exec_reset = cpu_reset,
     .do_interrupt = xr17032_cpu_do_interrupt,
     .do_transaction_failed = xr17032_cpu_do_transaction_failed,
+    .do_unaligned_access = xr17032_cpu_do_unaligned_access,
 #endif
 };
