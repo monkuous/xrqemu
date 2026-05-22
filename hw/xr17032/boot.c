@@ -14,6 +14,7 @@
 #include "qemu/error-report.h"
 #include "system/reset.h"
 #include "system/qtest.h"
+#include "system/device_tree.h"
 
 void xr17032_load_kernel(MachineState *ms)
 {
@@ -38,9 +39,6 @@ void xr17032_load_kernel(MachineState *ms)
     }
 
     if (ms->kernel_cmdline) {
-        fw_cfg_add_i32(s->fw_cfg, FW_CFG_CMDLINE_SIZE,
-                       strlen(ms->kernel_cmdline) + 1);
-        fw_cfg_add_string(s->fw_cfg, FW_CFG_CMDLINE_DATA,
-                          ms->kernel_cmdline);
+        qemu_fdt_setprop_string(ms->fdt, "/chosen", "bootargs", ms->kernel_cmdline);
     }
 }
