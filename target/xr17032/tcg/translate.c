@@ -448,6 +448,7 @@ static bool trans_sc(DisasContext *ctx, arg_sc *a)
     TCGv dest = gpr_dst(ctx, a->ra);
     TCGv src1 = gpr_src(ctx, a->rb);
     TCGv src2 = gpr_src(ctx, a->rc);
+    TCGv tmp = tcg_temp_new();
     TCGv val = tcg_temp_new();
 
     TCGLabel *l1 = gen_new_label();
@@ -460,9 +461,9 @@ static bool trans_sc(DisasContext *ctx, arg_sc *a)
     gen_set_label(l1);
     tcg_gen_mov_tl(val, src2);
     /* generate cmpxchg */
-    tcg_gen_atomic_cmpxchg_tl(src1, cpu_lladdr, cpu_llval,
+    tcg_gen_atomic_cmpxchg_tl(tmp, cpu_lladdr, cpu_llval,
                               val, ctx->mem_idx, MO_LEUL | MO_ALIGN);
-    tcg_gen_setcond_tl(TCG_COND_EQ, dest, src1, cpu_llval);
+    tcg_gen_setcond_tl(TCG_COND_EQ, dest, tmp, cpu_llval);
     gen_set_label(done);
     gen_set_gpr(ctx, a->ra, dest);
 
