@@ -334,7 +334,7 @@ static bool trans_adr(DisasContext *ctx, arg_adr *a)
 {
     TCGv dest = gpr_dst(ctx, a->ra);
 
-    tcg_gen_movi_tl(dest, ctx->base.pc_first + a->imm);
+    tcg_gen_movi_tl(dest, ctx->base.pc_next + a->imm);
     gen_set_gpr(ctx, a->ra, dest);
     return true;
 }
